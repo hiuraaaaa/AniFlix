@@ -52,7 +52,6 @@ import Announcment from '@component/misc/Announcement';
 import { ListAnimeComponent } from '@component/misc/ListAnimeComponent';
 import ReText from '@component/misc/ReText';
 import Skeleton from '@component/misc/Skeleton';
-import { Github, JoinDiscord } from '@component/misc/Social';
 import { TouchableOpacity } from '@component/misc/TouchableOpacityRNGH';
 import {
   ComicsListContext,
@@ -67,8 +66,8 @@ import { getLatestMovie, Movies } from '@utils/scrapers/animeMovie';
 import { getLatestComicsReleases, LatestComicsRelease } from '@utils/scrapers/comicsv2';
 import { FilmHomePage, getHomepage, getLatestMovies, getLatestSeries } from '@utils/scrapers/film';
 
-export const MIN_IMAGE_HEIGHT = 200;
-export const MIN_IMAGE_WIDTH = 100;
+export const MIN_IMAGE_HEIGHT = 160;
+export const MIN_IMAGE_WIDTH = 90;
 
 type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
 
@@ -100,7 +99,7 @@ function HomeList(props: HomeProps) {
 
   useFocusEffect(
     useCallback(() => {
-      const baseDurationPer100px = 2000; // 2000ms per 100px
+      const baseDurationPer100px = 2000;
       const minimumAnimationDuration = 8000;
       const displayNewQuote = (finished?: boolean) => {
         let layoutWidth = textLayoutWidth.get();
@@ -231,7 +230,7 @@ function HomeList(props: HomeProps) {
     setFilmHomepageData({
       featured: [],
       trending: [],
-    }); // so the skeleton loading show
+    });
     setIsFilmError(false);
     queueMicrotask(() => {
       getHomepage()
@@ -253,8 +252,8 @@ function HomeList(props: HomeProps) {
           style={{ zIndex: 1 }}
           refreshing={refresh}
           onRefresh={refreshing}
-          progressBackgroundColor={colorScheme === 'dark' ? '#121212' : '#f5f5f7'}
-          colors={['#00a2ff', '#BB86FC']}
+          progressBackgroundColor={colorScheme === 'dark' ? '#121212' : '#ffffff'}
+          colors={[theme.colors.primary]}
         />
       }
       contentContainerStyle={{
@@ -274,21 +273,8 @@ function HomeList(props: HomeProps) {
             <View style={styles.appInfo}>
               <Text style={styles.appName}>AniFlix</Text>
               <Text style={styles.appVersion}>
-                {version}-JS_{OTAJSVersion}
+                v{version}
               </Text>
-            </View>
-
-            <View style={styles.socialButtons}>
-              <JoinDiscord
-                buttonColor={theme.colors.surfaceVariant}
-                size={20}
-                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 }}
-              />
-              <Github
-                buttonColor={theme.colors.surfaceVariant}
-                size={20}
-                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 }}
-              />
             </View>
 
             <View
@@ -301,7 +287,7 @@ function HomeList(props: HomeProps) {
             </View>
           </View>
           <TouchableOpacity style={styles.refreshButton} onPress={refreshing} disabled={refresh}>
-            <MaterialIcon name="refresh" size={20} color="#FFFFFF" style={styles.refreshIcon} />
+            <MaterialIcon name="refresh" size={18} color={colorScheme === 'dark' ? '#fff' : '#333'} style={styles.refreshIcon} />
             <Text style={styles.refreshText}>Refresh Data</Text>
           </TouchableOpacity>
           <EpisodeBaru
@@ -361,7 +347,6 @@ function FeaturedFilmListUNMEMO({
   isError: boolean;
 }) {
   const styles = useStyles();
-  // const { paramsState: data, setParamsState: setData } = useContext(MovieListHomeContext);
 
   const renderMovie = useCallback(
     ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
@@ -420,7 +405,6 @@ function TrendingFilmListUNMEMO({
   isError: boolean;
 }) {
   const styles = useStyles();
-  // const { paramsState: data, setParamsState: setData } = useContext(MovieListHomeContext);
 
   const renderMovie = useCallback(
     ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
@@ -488,7 +472,7 @@ function LatestFilmListUNMEMO({ props }: { props: HomeProps }) {
   );
 
   useEffect(() => {
-    setData?.([]); // so the skeleton loading show
+    setData?.([]);
     queueMicrotask(() => {
       getLatestMovies()
         .then(movieData => {
@@ -561,7 +545,7 @@ function LatestSeriesListUNMEMO({ props }: { props: HomeProps }) {
   );
 
   useEffect(() => {
-    setData?.([]); // so the skeleton loading show
+    setData?.([]);
     queueMicrotask(() => {
       getLatestSeries()
         .then(movieData => {
@@ -703,7 +687,7 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   );
 
   useEffect(() => {
-    setData?.([]); // so the skeleton loading show
+    setData?.([]);
     queueMicrotask(() => {
       getLatestMovie()
         .then(movieData => {
@@ -845,24 +829,24 @@ function ComicListUNMEMO() {
 
 function ShowSkeletonLoading() {
   const dimensions = useWindowDimensions();
-  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 2.5;
-  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2;
+  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 3.5;
+  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2.8;
   LIST_BACKGROUND_HEIGHT = Math.max(LIST_BACKGROUND_HEIGHT, MIN_IMAGE_HEIGHT);
   LIST_BACKGROUND_WIDTH = Math.max(LIST_BACKGROUND_WIDTH, MIN_IMAGE_WIDTH);
   return (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
+    <View style={{ flexDirection: 'row', gap: 8 }}>
       {[1, 2, 3].map((_, index) => (
         <View key={index} style={{ gap: 3 }}>
           <Skeleton
             key={index + 'image'}
             width={LIST_BACKGROUND_WIDTH}
             height={LIST_BACKGROUND_HEIGHT}
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 6 }}
           />
-          <Skeleton key={index + 'title'} width={LIST_BACKGROUND_WIDTH} height={20} />
+          <Skeleton key={index + 'title'} width={LIST_BACKGROUND_WIDTH} height={16} />
           <View key={index + 'info'} style={{ flexDirection: 'row', gap: 2 }}>
-            <Skeleton key={index + 'info1'} width={LIST_BACKGROUND_WIDTH / 2} height={20} />
-            <Skeleton key={index + 'info2'} width={LIST_BACKGROUND_WIDTH / 2} height={20} />
+            <Skeleton key={index + 'info1'} width={LIST_BACKGROUND_WIDTH / 2} height={16} />
+            <Skeleton key={index + 'info2'} width={LIST_BACKGROUND_WIDTH / 2} height={16} />
           </View>
         </View>
       ))}
@@ -926,7 +910,7 @@ function randomQuote() {
 function measureQuoteTextWidth(quote: string) {
   const width = MeasureText.measureWidth(quote, {
     fontWeight: 'bold',
-    fontSize: 17,
+    fontSize: 14,
   });
   return width;
 }
@@ -945,29 +929,29 @@ function useStyles() {
       StyleSheet.create({
         container: {
           flex: 1,
-          backgroundColor: isDark ? '#121212' : '#f5f5f7',
+          backgroundColor: isDark ? '#121212' : '#f0f0f0',
         },
         headerCard: {
           backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 16,
+          borderRadius: 12,
           padding: 5,
-          paddingBottom: 16,
-          margin: 16,
-          marginBottom: 12,
-          elevation: 4,
+          paddingBottom: 14,
+          margin: 12,
+          marginBottom: 8,
+          elevation: 2,
         },
         headerInfo: {
           flexDirection: 'row',
           justifyContent: 'space-between',
-          marginBottom: 8,
+          marginBottom: 4,
         },
         timeText: {
-          fontSize: 14,
+          fontSize: 13,
           color: theme.colors.primary,
           fontWeight: 'bold',
         },
         batteryText: {
-          fontSize: 14,
+          fontSize: 13,
           color: theme.colors.primary,
           fontWeight: 'bold',
         },
@@ -975,66 +959,66 @@ function useStyles() {
           flexDirection: 'row',
           alignItems: 'baseline',
           justifyContent: 'center',
-          marginBottom: 16,
+          marginBottom: 8,
         },
         appName: {
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: 'bold',
           color: isDark ? '#E0E0E0' : '#333',
-          marginRight: 8,
+          marginRight: 6,
         },
         appVersion: {
-          fontSize: 12,
+          fontSize: 11,
           color: isDark ? '#AAA' : '#777',
         },
         socialButtons: {
           flexDirection: 'row',
           flexWrap: 'wrap',
           justifyContent: 'space-around',
-          gap: 16,
-          marginBottom: 8,
+          gap: 12,
+          marginBottom: 6,
         },
         runningText: {
           color: theme.colors.primary,
           fontWeight: 'bold',
-          fontSize: 14,
+          fontSize: 12,
         },
         refreshButton: {
           flexDirection: 'row',
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: theme.colors.secondaryContainer,
-          paddingVertical: 4,
+          backgroundColor: isDark ? '#2a2a2a' : '#ebebeb',
+          paddingVertical: 6,
           borderRadius: 8,
-          marginHorizontal: 16,
-          marginBottom: 16,
+          marginHorizontal: 12,
+          marginBottom: 12,
         },
         refreshIcon: {
-          color: theme.colors.onSecondaryContainer,
-          marginRight: 8,
+          color: isDark ? '#fff' : '#333',
+          marginRight: 6,
         },
         refreshText: {
-          color: theme.colors.onSecondaryContainer,
+          color: isDark ? '#fff' : '#333',
           fontWeight: 'bold',
-          fontSize: 16,
+          fontSize: 14,
         },
         sectionContainer: {
           backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 16,
+          borderRadius: 12,
           paddingVertical: 8,
           marginHorizontal: 3,
-          marginBottom: 16,
-          elevation: 2,
+          marginBottom: 12,
+          elevation: 1,
         },
         sectionHeader: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingHorizontal: 16,
-          marginBottom: 12,
+          paddingHorizontal: 12,
+          marginBottom: 8,
         },
         sectionTitle: {
-          fontSize: 18,
+          fontSize: 15,
           fontWeight: 'bold',
           color: isDark ? '#E0E0E0' : '#333',
         },
@@ -1043,32 +1027,32 @@ function useStyles() {
           alignItems: 'center',
         },
         seeMoreText: {
-          fontSize: 14,
+          fontSize: 12,
           fontWeight: 'bold',
           color: theme.colors.primary,
-          marginRight: 4,
+          marginRight: 2,
         },
         scheduleSection: {
           backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 16,
-          padding: 16,
-          marginHorizontal: 16,
-          marginBottom: 16,
-          elevation: 2,
+          borderRadius: 12,
+          padding: 12,
+          marginHorizontal: 12,
+          marginBottom: 12,
+          elevation: 1,
         },
         scheduleContainer: {
-          marginBottom: 16,
+          marginBottom: 12,
         },
         scheduleDay: {
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: 'bold',
           color: theme.colors.primary,
-          marginBottom: 8,
+          marginBottom: 6,
           textAlign: 'center',
         },
         scheduleItem: {
-          paddingVertical: 12,
-          paddingHorizontal: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
         },
         scheduleItemEven: {
           backgroundColor: isDark ? '#252525' : '#F5F5F5',
@@ -1077,7 +1061,7 @@ function useStyles() {
           backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
         },
         scheduleTitle: {
-          fontSize: 14,
+          fontSize: 13,
           color: isDark ? '#E0E0E0' : '#333',
           textAlign: 'center',
         },
@@ -1085,23 +1069,21 @@ function useStyles() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: 16,
+          padding: 12,
           backgroundColor: isDark ? '#2A1E1E' : '#FFEBEE',
           borderRadius: 8,
-          marginHorizontal: 16,
+          marginHorizontal: 12,
         },
         errorText: {
-          fontSize: 14,
+          fontSize: 13,
           color: '#d80000',
-          marginLeft: 8,
+          marginLeft: 6,
           textAlign: 'center',
         },
       }),
     [
       isDark,
-      theme.colors.onSecondaryContainer,
       theme.colors.primary,
-      theme.colors.secondaryContainer,
     ],
   );
 }
