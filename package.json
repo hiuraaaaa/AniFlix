@@ -102,7 +102,6 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "yarn@3.8.2",
   "expo": {
     "autolinking": {
       "exclude": []
