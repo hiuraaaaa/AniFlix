@@ -11,6 +11,7 @@
     "url": "https://u.expo.dev/a8fab8df-a6fc-4724-b527-fc05c98c90cc"
   },
   "android": {
+    "package": "com.hiura.aniflix",
     "runtimeVersion": "1.2.1",
     "intentFilters": [
         {
