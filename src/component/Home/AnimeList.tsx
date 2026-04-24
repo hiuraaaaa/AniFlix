@@ -61,6 +61,7 @@ export default Home;
 function HomeList(props: HomeProps) {
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const styles = useStyles();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -161,6 +162,15 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+            <Text style={{
+              fontSize: 28,
+              fontWeight: 'bold',
+              color: isDark ? '#E0E0E0' : '#333',
+            }}>
+              Lunar
+            </Text>
+          </View>
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
