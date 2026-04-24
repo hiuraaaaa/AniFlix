@@ -26,3 +26,5 @@ jobs:
 
       - name: Publish update
         run: eas update --branch production --message "Update from GitHub Actions"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
