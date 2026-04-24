@@ -65,9 +65,7 @@ export function ListAnimeComponent(
       style={[
         {
           margin: props.gap ? 3 : 0,
-          // minWidth:
-          //   props.type === 'comics' ? styles.listBackground.height : styles.listBackground.width,
-          gap: 6,
+          gap: 4,
         },
         styles.listContainer,
       ]}
@@ -91,15 +89,7 @@ export function ListAnimeComponent(
         resizeMode="stretch"
         key={z.thumbnailUrl}
         source={{ uri: z.thumbnailUrl }}
-        style={[
-          styles.listBackground,
-          // {
-          //   width:
-          //     props.type === 'comics' ? styles.listBackground.height : styles.listBackground.width,
-          //   height:
-          //     props.type === 'comics' ? styles.listBackground.width : styles.listBackground.height,
-          // },
-        ]}>
+        style={styles.listBackground}>
         <View style={{ flex: 1, justifyContent: 'space-between', flexDirection: 'row' }}>
           <View style={styles.animeEpisodeContainer}>
             <Text style={styles.animeEpisode}>{episodeOrChapter}</Text>
@@ -107,7 +97,7 @@ export function ListAnimeComponent(
           {'rating' in z && (
             <View style={[styles.animeEpisodeContainer]}>
               <Text style={styles.animeEpisode}>
-                <Icon name="star" size={12} color="#FFD700" /> {z.rating}
+                <Icon name="star" size={10} color="#FFD700" /> {z.rating}
               </Text>
             </View>
           )}
@@ -152,8 +142,8 @@ function useStyles() {
   const theme = useTheme();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
-  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 2.5;
-  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2;
+  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 3.5;
+  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2.8;
   LIST_BACKGROUND_HEIGHT = Math.max(LIST_BACKGROUND_HEIGHT, MIN_IMAGE_HEIGHT);
   LIST_BACKGROUND_WIDTH = Math.max(LIST_BACKGROUND_WIDTH, MIN_IMAGE_WIDTH);
   return useMemo(
@@ -161,18 +151,18 @@ function useStyles() {
       StyleSheet.create({
         listContainer: {
           overflow: 'hidden',
-          elevation: 4,
-          padding: 8,
+          elevation: 2,
+          padding: 5,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.colors.onBackground,
-          backgroundColor: colorScheme === 'dark' ? '#2e2e2e' : '#f3f3f3',
-          borderRadius: 12,
+          borderColor: colorScheme === 'dark' ? '#333' : '#e0e0e0',
+          backgroundColor: colorScheme === 'dark' ? '#1f1f1f' : '#ffffff',
+          borderRadius: 8,
         },
         listBackground: {
           overflow: 'hidden',
           width: LIST_BACKGROUND_WIDTH,
           height: LIST_BACKGROUND_HEIGHT,
-          borderRadius: 7,
+          borderRadius: 5,
           alignSelf: 'center',
         },
         infoContainer: {
@@ -186,7 +176,7 @@ function useStyles() {
           alignItems: 'center',
         },
         animeTitle: {
-          fontSize: 13,
+          fontSize: 11,
           textAlign: 'center',
           color: globalStyles.text.color,
           fontWeight: 'bold',
@@ -194,17 +184,17 @@ function useStyles() {
         animeEpisodeContainer: {
           backgroundColor: '#000000b0',
           alignSelf: 'flex-start',
-          padding: 5,
-          borderRadius: 5,
+          padding: 3,
+          borderRadius: 4,
         },
         animeEpisode: {
-          fontSize: 11,
+          fontSize: 9,
           color: 'white',
           fontWeight: 'bold',
         },
         animeReleaseDayContainer: {},
         animeReleaseDay: {
-          fontSize: 12,
+          fontSize: 10,
           color: theme.colors.tertiary,
           opacity: 0.8,
           fontWeight: 'bold',
