@@ -781,12 +781,12 @@ function useStyles() {
           backgroundColor: isDark ? '#121212' : '#f0f0f0',
         },
         sectionContainer: {
-          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 12,
+          //backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+         // borderRadius: 12,
           paddingVertical: 8,
-          marginHorizontal: 3,
+        //  marginHorizontal: 3,
           marginBottom: 12,
-          elevation: 1,
+         // elevation: 1,
         },
         sectionHeader: {
           flexDirection: 'row',
