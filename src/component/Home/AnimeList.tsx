@@ -1,4 +1,3 @@
-import * as MeasureText from '@domir/react-native-measure-text';
 import { LegendList, LegendListRef } from '@legendapp/list';
 import MaterialIcon, { MaterialIcons } from '@react-native-vector-icons/material-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -29,28 +28,14 @@ import {
   View,
 } from 'react-native';
 import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
-import { useBatteryLevel } from 'react-native-nitro-device-info';
 import { useTheme } from 'react-native-paper';
-import Reanimated, {
-  cancelAnimation,
-  Easing,
-  interpolate,
-  ReduceMotion,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { runOnJS } from 'react-native-worklets';
 
 import { EpisodeBaruHome as EpisodeBaruType, JadwalAnime, NewAnimeList } from '@/types/anime';
 import { HomeNavigator, RootStackNavigator } from '@/types/navigation';
-import runningText from '@assets/runningText.json';
 import useGlobalStyles from '@assets/style';
 import Announcment from '@component/misc/Announcement';
 import { ListAnimeComponent } from '@component/misc/ListAnimeComponent';
-import ReText from '@component/misc/ReText';
 import Skeleton from '@component/misc/Skeleton';
 import { TouchableOpacity } from '@component/misc/TouchableOpacityRNGH';
 import {
@@ -60,7 +45,6 @@ import {
   MovieListHomeContext,
   SeriesListHomeContext,
 } from '@misc/context';
-import { OTAJSVersion, version } from '@root/package.json';
 import AnimeAPI from '@utils/AnimeAPI';
 import { getLatestMovie, Movies } from '@utils/scrapers/animeMovie';
 import { getLatestComicsReleases, LatestComicsRelease } from '@utils/scrapers/comicsv2';
@@ -85,79 +69,7 @@ function HomeList(props: HomeProps) {
   const [refreshingKey, setRefreshingKey] = useState(0);
   const windowSize = useWindowDimensions();
 
-  const boxTextAnim = useSharedValue(0);
-  const boxTextLayout = useSharedValue(0);
-  const textLayoutWidth = useSharedValue(0);
-  const localTime = useLocalTime();
-  const battery = useBatteryLevel();
 
-  const [animationText, setAnimationText] = useState(() => {
-    const quote = randomQuote();
-    textLayoutWidth.set(measureQuoteTextWidth(quote));
-    return quote;
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      const baseDurationPer100px = 2000;
-      const minimumAnimationDuration = 8000;
-      const displayNewQuote = (finished?: boolean) => {
-        let layoutWidth = textLayoutWidth.get();
-        if (finished) {
-          textLayoutWidth.set(0);
-          const quote = randomQuote();
-          const newWidth = measureQuoteTextWidth(quote);
-          textLayoutWidth.set(newWidth);
-          setAnimationText(quote);
-          layoutWidth = newWidth;
-        }
-        boxTextAnim.set(0);
-        if (!finished) return;
-        const duration = Math.max(
-          minimumAnimationDuration,
-          (layoutWidth / 100) * baseDurationPer100px,
-        );
-
-        boxTextAnim.set(
-          withDelay(
-            2000,
-            withTiming(
-              1,
-              { duration, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
-              callback,
-            ),
-            ReduceMotion.Never,
-          ),
-        );
-      };
-      function callback(finished?: boolean) {
-        if (finished) runOnJS(displayNewQuote)(finished);
-      }
-      const initialDuration = Math.max(
-        minimumAnimationDuration,
-        (measureQuoteTextWidth(animationText) / 100) * baseDurationPer100px,
-      );
-      boxTextAnim.set(
-        withDelay(
-          1000,
-          withTiming(
-            1,
-            { duration: initialDuration, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
-            callback,
-          ),
-        ),
-      );
-    }, [animationText, boxTextAnim, textLayoutWidth]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        cancelAnimation(boxTextAnim);
-        boxTextAnim.set(0);
-      };
-    }, [boxTextAnim]),
-  );
 
   const refreshing = useCallback(() => {
     setRefresh(true);
@@ -176,21 +88,6 @@ function HomeList(props: HomeProps) {
         });
     }, 0);
   }, [setData]);
-
-  const AnimationTextStyle = useAnimatedStyle(() => {
-    return {
-      width: textLayoutWidth.get() === 0 ? 'auto' : textLayoutWidth.get(),
-      transform: [
-        {
-          translateX: interpolate(
-            boxTextAnim.get(),
-            [0, 1],
-            [windowSize.width, -boxTextLayout.get()],
-          ),
-        },
-      ],
-    };
-  });
 
   const renderJadwalAnime = useCallback(
     ({ item }: { item: keyof JadwalAnime }) => {
@@ -264,32 +161,6 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
-          <View style={styles.headerCard}>
-            <View style={styles.headerInfo}>
-              <ReText style={styles.timeText} text={localTime} />
-              <Text style={styles.batteryText}>{Math.round((battery ?? 0) * 100)}%</Text>
-            </View>
-
-            <View style={styles.appInfo}>
-              <Text style={styles.appName}>AniFlix</Text>
-              <Text style={styles.appVersion}>
-                v{version}
-              </Text>
-            </View>
-
-            <View
-              style={{ overflow: 'hidden', position: 'absolute', bottom: 2, left: 0, right: 0 }}>
-              <Reanimated.Text
-                onLayout={nativeEvent => boxTextLayout.set(nativeEvent.nativeEvent.layout.width)}
-                style={[styles.runningText, AnimationTextStyle]}>
-                {animationText}
-              </Reanimated.Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.refreshButton} onPress={refreshing} disabled={refresh}>
-            <MaterialIcon name="refresh" size={18} color={colorScheme === 'dark' ? '#fff' : '#333'} style={styles.refreshIcon} />
-            <Text style={styles.refreshText}>Refresh Data</Text>
-          </TouchableOpacity>
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
@@ -883,38 +754,6 @@ function JadwalComponent({ item, props }: { item: keyof JadwalAnime; props: Home
   );
 }
 
-function useLocalTime() {
-  const time = useSharedValue(new Date().toLocaleTimeString());
-  const currTime = useRef<string>(null);
-  useFocusEffect(
-    useCallback(() => {
-      time.set(new Date().toLocaleTimeString());
-      const interval = setInterval(() => {
-        const string = new Date().toLocaleTimeString();
-        if (currTime.current !== string) {
-          time.set(string);
-          currTime.current = string;
-        }
-      }, 500);
-      return () => clearInterval(interval);
-    }, [time]),
-  );
-  return time;
-}
-
-function randomQuote() {
-  const randomizeQuote = runningText[Math.floor(Math.random() * runningText.length)] ?? {};
-  const quote = `"${randomizeQuote.quote}" - ${randomizeQuote.by}`;
-  return quote;
-}
-function measureQuoteTextWidth(quote: string) {
-  const width = MeasureText.measureWidth(quote, {
-    fontWeight: 'bold',
-    fontSize: 14,
-  });
-  return width;
-}
-
 export function RenderScrollComponent(renderProps: ScrollViewProps) {
   return <ScrollView {...renderProps} />;
 }
@@ -930,77 +769,6 @@ function useStyles() {
         container: {
           flex: 1,
           backgroundColor: isDark ? '#121212' : '#f0f0f0',
-        },
-        headerCard: {
-          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 12,
-          padding: 5,
-          paddingBottom: 14,
-          margin: 12,
-          marginBottom: 8,
-          elevation: 2,
-        },
-        headerInfo: {
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginBottom: 4,
-        },
-        timeText: {
-          fontSize: 13,
-          color: theme.colors.primary,
-          fontWeight: 'bold',
-        },
-        batteryText: {
-          fontSize: 13,
-          color: theme.colors.primary,
-          fontWeight: 'bold',
-        },
-        appInfo: {
-          flexDirection: 'row',
-          alignItems: 'baseline',
-          justifyContent: 'center',
-          marginBottom: 8,
-        },
-        appName: {
-          fontSize: 20,
-          fontWeight: 'bold',
-          color: isDark ? '#E0E0E0' : '#333',
-          marginRight: 6,
-        },
-        appVersion: {
-          fontSize: 11,
-          color: isDark ? '#AAA' : '#777',
-        },
-        socialButtons: {
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          justifyContent: 'space-around',
-          gap: 12,
-          marginBottom: 6,
-        },
-        runningText: {
-          color: theme.colors.primary,
-          fontWeight: 'bold',
-          fontSize: 12,
-        },
-        refreshButton: {
-          flexDirection: 'row',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: isDark ? '#2a2a2a' : '#ebebeb',
-          paddingVertical: 6,
-          borderRadius: 8,
-          marginHorizontal: 12,
-          marginBottom: 12,
-        },
-        refreshIcon: {
-          color: isDark ? '#fff' : '#333',
-          marginRight: 6,
-        },
-        refreshText: {
-          color: isDark ? '#fff' : '#333',
-          fontWeight: 'bold',
-          fontSize: 14,
         },
         sectionContainer: {
           backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
@@ -1081,9 +849,6 @@ function useStyles() {
           textAlign: 'center',
         },
       }),
-    [
-      isDark,
-      theme.colors.primary,
-    ],
+    [isDark, theme.colors.primary],
   );
 }
