@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Button, Divider, Searchbar, Surface, useTheme } from 'react-native-paper';
+import { Button, Chip, Divider, Searchbar, useTheme } from 'react-native-paper';
 import Reanimated, {
   interpolate,
   useAnimatedRef,
@@ -46,7 +46,8 @@ type RecyclerViewType = (
 const ReanimatedFlashList = Reanimated.createAnimatedComponent<RecyclerViewType>(FlashList);
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'ComicsDetail'>;
-const IMG_HEIGHT = 200;
+const IMG_HEIGHT = 280;
+
 export default function ComicsDetail(props: Props) {
   const globalStyles = useGlobalStyles();
   const insets = useSafeAreaInsets();
@@ -170,13 +171,11 @@ export default function ComicsDetail(props: Props) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="height">
       <ReanimatedFlashList
-        maintainVisibleContentPosition={{
-          disabled: true,
-        }}
+        maintainVisibleContentPosition={{ disabled: true }}
         ref={scrollRef}
         data={filteredChapters}
         ListEmptyComponent={() => (
-          <View style={[styles.mainContainer, { marginVertical: 6 }]}>
+          <View style={[styles.mainContainer, { padding: 20 }]}>
             <Text style={globalStyles.text}>Tidak ada chapter</Text>
           </View>
         )}
@@ -188,15 +187,15 @@ export default function ComicsDetail(props: Props) {
             readComic={readComic}
           />
         )}
-        ItemSeparatorComponent={() => <Divider />}
+        ItemSeparatorComponent={() => <Divider style={styles.chapterDivider} />}
         keyExtractor={(item, index) => item.chapter + index}
         contentContainerStyle={{
           backgroundColor: styles.mainContainer.backgroundColor,
           paddingLeft: insets.left,
           paddingRight: insets.right,
-          paddingBottom: insets.bottom,
+          paddingBottom: insets.bottom + 20,
         }}
-        ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 12 }]}
+        ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 8 }]}
         ListHeaderComponent={listHeaderComponent}
         showsVerticalScrollIndicator={false}
       />
@@ -230,127 +229,160 @@ const ComicsDetailHeader = memo(
     const globalStyles = useGlobalStyles();
     const theme = useTheme();
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     return (
-      <>
-        <Reanimated.View
-          style={[
-            { width: '100%', height: IMG_HEIGHT },
-            imageStyle,
-            { backgroundColor: theme.colors.elevation.level2 },
-          ]}>
-          <Icon
-            color={theme.colors.onBackground}
-            name="book"
-            size={64}
-            style={{ alignSelf: 'center', marginTop: 60 }}
+      <View style={styles.mainContainer}>
+        {/* Hero Image */}
+        <Reanimated.View style={[{ width: '100%', height: IMG_HEIGHT }, imageStyle]}>
+          <ImageLoading
+            source={{ uri: data.thumbnailUrl }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', isDark ? '#0c0c0c' : '#ebebeb']}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 120,
+            }}
           />
         </Reanimated.View>
-        <LinearGradient
-          colors={['transparent', 'black']}
-          style={{
-            width: '100%',
-            height: 60,
-            position: 'absolute',
-            transform: [
-              {
-                translateY: 155,
-              },
-            ],
-          }}
-        />
-        <View style={[styles.mainContainer, styles.mainContent]}>
-          <View style={{ flexDirection: 'column', alignItems: 'center' }}>
-            <ImageLoading source={{ uri: data.thumbnailUrl }} style={styles.thumbnail} />
-            <View style={{ transform: styles.thumbnail.transform, flexDirection: 'row', gap: 5 }}>
-              <Surface
-                elevation={3}
-                style={{
-                  backgroundColor: colorScheme === 'dark' ? '#00608d' : '#5ddfff',
-                  borderRadius: 10,
-                }}>
-                <Text style={[globalStyles.text, styles.type]}>{data.type}</Text>
-              </Surface>
-              <Surface
-                elevation={3}
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  borderColor: colorScheme === 'dark' ? 'white' : 'black',
-                }}>
-                <Text style={[globalStyles.text, styles.status]}>{data.status}</Text>
-              </Surface>
-            </View>
-          </View>
-          <View style={styles.infoContainer}>
-            <Text style={[globalStyles.text, styles.title]}>{data.title}</Text>
-            <Text
-              style={[globalStyles.text, styles.title, styles.indonesianTitle]}
-              numberOfLines={4}>
-              {'indonesianTitle' in data ? data.indonesianTitle : data.altTitle}
-            </Text>
-            <Text style={[globalStyles.text, styles.author]}>By {data.author || '-'}</Text>
-            <View style={styles.genreContainer}>
-              {data.genres.map(z => {
-                return (
-                  <Surface
-                    key={z}
-                    elevation={3}
-                    style={{
-                      borderRadius: 8,
-                      backgroundColor:
-                        z === 'Ecchi' ? 'rgba(255, 0, 0, 0.5)' : theme.colors.elevation.level3,
-                    }}>
-                    <Text style={styles.genre} key={z}>
-                      {z}
-                    </Text>
-                  </Surface>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-        <View style={{ flexDirection: 'column', flex: 1, marginTop: 10 }}>
-          <View style={styles.secondaryInfoContainer}>
-            <View style={styles.additionalInfo}>
-              {'indonesianTitle' in data ? (
-                <>
-                  <Surface style={styles.additionalInfoTextSurface}>
-                    <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                      <Icon color={styles.additionalInfoText.color} name="child" /> {data.minAge}
-                    </Text>
-                  </Surface>
-                  <Surface style={styles.additionalInfoTextSurface}>
-                    <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                      <Icon color={styles.additionalInfoText.color} name="map-signs" />{' '}
-                      {data.readingDirection}
-                    </Text>
-                  </Surface>
-                  <Surface style={styles.additionalInfoTextSurface}>
-                    <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                      <Icon color={styles.additionalInfoText.color} name="tag" /> {data.concept}
-                    </Text>
-                  </Surface>
-                </>
-              ) : undefined}
-              {'releaseYear' in data && (
-                <Surface style={[styles.additionalInfoTextSurface, { marginTop: 10 }]}>
-                  <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                    <Icon color={styles.additionalInfoText.color} name="calendar" />{' '}
-                    {data.releaseYear}
-                  </Text>
-                </Surface>
-              )}
-            </View>
 
-            <Text style={[globalStyles.text]}>{data.synopsis}</Text>
+        {/* Main Content */}
+        <View style={styles.mainContent}>
+          {/* Poster + Info Row */}
+          <View style={styles.posterRow}>
+            <ImageLoading
+              source={{ uri: data.thumbnailUrl }}
+              style={styles.thumbnail}
+              resizeMode="contain"
+            />
+            <View style={styles.infoContainer}>
+              <Text style={styles.title} numberOfLines={3}>
+                {data.title}
+              </Text>
+              <Text style={styles.altTitle} numberOfLines={2}>
+                {'indonesianTitle' in data ? data.indonesianTitle : data.altTitle}
+              </Text>
+              <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: isDark ? '#00608d' : '#5ddfff' }]}>
+                  <Text style={styles.badgeText}>{data.type}</Text>
+                </View>
+                <View style={[styles.badge, {
+                  borderWidth: 1,
+                  borderColor: isDark ? '#fff' : '#333',
+                  backgroundColor: 'transparent',
+                }]}>
+                  <Text style={[styles.badgeText, { color: isDark ? '#fff' : '#333' }]}>
+                    {data.status}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.author}>
+                <Icon name="user" size={12} color={styles.author.color} /> {data.author || '-'}
+              </Text>
+            </View>
           </View>
-          <View style={{ flexDirection: 'column', flex: 1, marginTop: 10 }}>
+
+          {/* Genres */}
+          {data.genres.length > 0 && (
+            <View style={styles.genreContainer}>
+              {data.genres.map(genre => (
+                <Chip
+                  key={genre}
+                  compact
+                  style={[
+                    styles.genreChip,
+                    genre === 'Ecchi' && { backgroundColor: 'rgba(255,0,0,0.3)' },
+                  ]}
+                  textStyle={styles.genreText}>
+                  {genre}
+                </Chip>
+              ))}
+            </View>
+          )}
+
+          {/* Info Pills */}
+          {'indonesianTitle' in data && (
+            <View style={styles.additionalInfo}>
+              <View style={styles.infoPill}>
+                <Icon name="child" size={12} color={theme.colors.primary} />
+                <Text style={styles.infoPillText}>{data.minAge}</Text>
+              </View>
+              <View style={styles.infoPill}>
+                <Icon name="map-signs" size={12} color={theme.colors.primary} />
+                <Text style={styles.infoPillText}>{data.readingDirection}</Text>
+              </View>
+              <View style={styles.infoPill}>
+                <Icon name="tag" size={12} color={theme.colors.primary} />
+                <Text style={styles.infoPillText}>{data.concept}</Text>
+              </View>
+            </View>
+          )}
+          {'releaseYear' in data && (
+            <View style={styles.additionalInfo}>
+              <View style={styles.infoPill}>
+                <Icon name="calendar" size={12} color={theme.colors.primary} />
+                <Text style={styles.infoPillText}>{data.releaseYear}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Synopsis */}
+          {data.synopsis ? (
+            <View style={styles.synopsisContainer}>
+              <Text style={styles.sectionTitle}>Sinopsis</Text>
+              <Text style={styles.synopsisText}>{data.synopsis}</Text>
+            </View>
+          ) : null}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {lastReaded && lastReaded.episode && (
+              <Button
+                mode="contained"
+                icon="book-open"
+                style={styles.primaryButton}
+                onPress={() => readComic(lastReaded.link, lastReaded)}>
+                Lanjut ({lastReaded.episode})
+              </Button>
+            )}
+            <View style={styles.secondaryButtons}>
+              <Button
+                mode="outlined"
+                style={styles.halfButton}
+                onPress={() => {
+                  const chapterData = data.chapters[data.chapters.length - 1];
+                  if (!chapterData?.chapterUrl) {
+                    ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                    return;
+                  }
+                  readComic(chapterData.chapterUrl);
+                }}>
+                Ch. Pertama
+              </Button>
+              <Button
+                mode="outlined"
+                style={styles.halfButton}
+                onPress={() => {
+                  const chapterData = data.chapters[0];
+                  if (!chapterData?.chapterUrl) {
+                    ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                    return;
+                  }
+                  readComic(chapterData.chapterUrl);
+                }}>
+                Ch. Terbaru
+              </Button>
+            </View>
             <Button
-              buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-              textColor={styles.additionalInfoText.color}
               mode="outlined"
               icon="playlist-plus"
+              style={styles.watchLaterButton}
               disabled={isInList}
               onPress={() => {
                 if (!data.chapters[data.chapters.length - 1]) {
@@ -374,61 +406,26 @@ const ComicsDetailHeader = memo(
                   isComics: true,
                 };
                 controlWatchLater('add', watchLaterJson);
-                ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
+                ToastAndroid.show('Ditambahkan ke baca nanti', ToastAndroid.SHORT);
               }}>
-              {isInList ? 'Sudah Ditambahkan' : 'Baca Nanti'}
+              {isInList ? 'Sudah di Baca Nanti' : 'Baca Nanti'}
             </Button>
-            <Text style={[globalStyles.text, styles.listChapterText]}>List Chapters</Text>
-            <View style={{ gap: 10 }}>
-              {lastReaded && lastReaded.episode && (
-                <Button
-                  mode="elevated"
-                  icon="book-open"
-                  onPress={() => {
-                    readComic(lastReaded.link, lastReaded);
-                  }}>
-                  Terakhir Dibaca ({lastReaded.episode})
-                </Button>
-              )}
-              <Button
-                onPress={() => {
-                  const chapterData = data.chapters[data.chapters.length - 1];
-                  if (!chapterData?.chapterUrl) {
-                    ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
-                    return;
-                  }
-                  readComic(chapterData.chapterUrl);
-                }}
-                buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-                textColor={styles.additionalInfoText.color}
-                mode="elevated">
-                Baca Chapter Pertama
-              </Button>
-              <Button
-                onPress={() => {
-                  const chapterData = data.chapters[0];
-                  if (!chapterData?.chapterUrl) {
-                    ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
-                    return;
-                  }
-                  readComic(chapterData?.chapterUrl);
-                }}
-                buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-                textColor={styles.additionalInfoText.color}
-                mode="elevated">
-                Baca Chapter Terbaru
-              </Button>
-            </View>
-            <Searchbar
-              onChangeText={setSearchQuery}
-              value={searchQuery}
-              style={{ margin: 10 }}
-              placeholder="Cari chapter"
-              keyboardType="number-pad"
-            />
           </View>
+
+          {/* Chapter List Header + Search */}
+          <View style={styles.chapterListHeader}>
+            <Text style={styles.sectionTitle}>Daftar Chapter</Text>
+            <Text style={styles.chapterCount}>{data.chapters.length} Chapter</Text>
+          </View>
+          <Searchbar
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchbar}
+            placeholder="Cari chapter"
+            keyboardType="number-pad"
+          />
         </View>
-      </>
+      </View>
     );
   },
 );
@@ -442,7 +439,7 @@ interface RenderChapterItemProps {
 
 const RenderChapterItem = memo(({ item, data, lastReaded, readComic }: RenderChapterItemProps) => {
   const styles = useStyles();
-  const globalStyles = useGlobalStyles();
+  const theme = useTheme();
 
   if (!item) return null;
   let isLastReaded =
@@ -464,34 +461,37 @@ const RenderChapterItem = memo(({ item, data, lastReaded, readComic }: RenderCha
   if (!isLastReaded) {
     lastReaded?.link === item.chapterUrl && (isLastReaded = true);
   }
+
   return (
     <TouchableOpacity
-      style={styles.chapterItem}
+      style={[styles.chapterItem, isLastReaded && styles.lastReadedItem]}
       onPress={() => readComic(item.chapterUrl, isLastReaded ? lastReaded : undefined)}>
       <View style={styles.chapterTitleContainer}>
-        <Text style={[globalStyles.text, styles.chapterText]}>
+        <Text style={[styles.chapterText, isLastReaded && { color: theme.colors.primary }]}>
           {item.chapter.includes('Chapter') ? item.chapter : `Chapter ${item.chapter}`}
         </Text>
+        {isLastReaded && (
+          <Text style={styles.lastReadedTag}>● Terakhir Dibaca</Text>
+        )}
       </View>
       <View style={styles.chapterDetailsContainer}>
         {'releaseDate' in item && (
           <>
-            <Text style={[globalStyles.text, styles.chapterDetailText]}>
-              <Icon color={styles.chapterDetailText.color} name="calendar" size={12} />{' '}
+            <Text style={styles.chapterDetailText}>
+              <Icon name="calendar" size={11} color={styles.chapterDetailText.color} />{' '}
               {item.releaseDate}
             </Text>
-            <Text style={[globalStyles.text, styles.chapterDetailText]}>
-              <Icon color={styles.chapterDetailText.color} name="eye" size={12} /> {item.views}x
-              dilihat
+            <Text style={styles.chapterDetailText}>
+              <Icon name="eye" size={11} color={styles.chapterDetailText.color} /> {item.views}x
             </Text>
           </>
         )}
-        {isLastReaded && (
-          <Text style={[globalStyles.text, styles.chapterDetailText, styles.lastReadedText]}>
-            <Icon color={styles.lastReadedText.color} name="book" size={12} /> Terakhir dibaca
-          </Text>
-        )}
       </View>
+      <Icon
+        name={isLastReaded ? 'history' : 'chevron-right'}
+        size={18}
+        color={isLastReaded ? theme.colors.primary : '#888'}
+      />
     </TouchableOpacity>
   );
 });
@@ -501,145 +501,192 @@ function useStyles() {
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
   const dimensions = useWindowDimensions();
+  const isDark = colorScheme === 'dark';
+
   return useMemo(
     () =>
       StyleSheet.create({
         mainContainer: {
           flex: 1,
-          backgroundColor: colorScheme === 'dark' ? '#0c0c0c' : '#ebebeb',
+          backgroundColor: isDark ? '#0c0c0c' : '#ebebeb',
         },
         mainContent: {
-          gap: 5,
-          flex: 1,
-          flexWrap: 'wrap',
-          flexDirection: 'row',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          gap: 16,
         },
-        infoContainer: {
-          gap: 5,
-          flex: 1,
-          flexDirection: 'column',
-          marginTop: 10,
+        posterRow: {
+          flexDirection: 'row',
+          gap: 14,
+          marginTop: -60,
         },
         thumbnail: {
-          margin: 15,
-          width: dimensions.width * 0.3,
+          width: dimensions.width * 0.28,
           height: 150,
-          borderRadius: 10,
-          transform: [{ translateY: -30 }],
+          borderRadius: 12,
+          elevation: 6,
         },
-        type: {
-          color: colorScheme === 'dark' ? 'white' : 'black',
-          fontWeight: 'bold',
-          padding: 5,
-        },
-        status: {
-          alignSelf: 'flex-start',
-          padding: 5,
+        infoContainer: {
+          flex: 1,
+          gap: 6,
+          paddingTop: 8,
         },
         title: {
-          flexShrink: 1,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 'bold',
+          color: globalStyles.text.color,
+          lineHeight: 24,
         },
-        indonesianTitle: {
-          fontSize: 14,
+        altTitle: {
+          fontSize: 12,
+          color: isDark ? '#aaa' : '#777',
+        },
+        badgeRow: {
+          flexDirection: 'row',
+          gap: 6,
+          flexWrap: 'wrap',
+        },
+        badge: {
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          borderRadius: 6,
+        },
+        badgeText: {
+          fontSize: 11,
+          fontWeight: 'bold',
+          color: isDark ? 'white' : 'black',
         },
         author: {
-          color: colorScheme === 'dark' ? '#5ddfff' : '#00608d',
+          fontSize: 12,
+          color: isDark ? '#5ddfff' : '#00608d',
         },
-        secondaryInfoContainer: {},
         genreContainer: {
-          flex: 1,
-          gap: 4,
-          flexWrap: 'wrap',
           flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 6,
         },
-        genre: {
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
-          alignSelf: 'flex-start',
-          padding: 4,
+        genreChip: {
+          backgroundColor: theme.colors.secondaryContainer,
+          height: 28,
+        },
+        genreText: {
+          fontSize: 11,
+          color: theme.colors.onSecondaryContainer,
         },
         additionalInfo: {
           flexDirection: 'row',
-          gap: 4,
           flexWrap: 'wrap',
-          marginBottom: 12,
+          gap: 8,
         },
-        additionalInfoTextSurface: {
-          borderRadius: 8,
-          backgroundColor: theme.colors.secondaryContainer,
-        },
-        additionalInfoText: {
-          color: theme.colors.onSecondaryContainer,
-          fontWeight: 'bold',
-          alignSelf: 'flex-start',
-          padding: 4,
-        },
-        listChapterText: {
-          fontWeight: 'bold',
-          fontSize: 22,
-          marginBottom: 10,
-        },
-        chapterButtonsContainer: {
+        infoPill: {
           flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginBottom: 10,
+          alignItems: 'center',
+          gap: 4,
+          backgroundColor: theme.colors.secondaryContainer,
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 20,
+        },
+        infoPillText: {
+          fontSize: 12,
+          fontWeight: 'bold',
+          color: theme.colors.onSecondaryContainer,
+        },
+        synopsisContainer: {
+          gap: 6,
+        },
+        sectionTitle: {
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: globalStyles.text.color,
+        },
+        synopsisText: {
+          fontSize: 14,
+          lineHeight: 22,
+          color: isDark ? '#ccc' : '#555',
+        },
+        actionButtons: {
           gap: 10,
         },
-        chapterButton: {
+        primaryButton: {
+          borderRadius: 10,
+        },
+        secondaryButtons: {
+          flexDirection: 'row',
+          gap: 10,
+        },
+        halfButton: {
           flex: 1,
           borderRadius: 10,
         },
-        chapterButtonLabel: {
-          fontSize: 12,
+        watchLaterButton: {
+          borderRadius: 10,
         },
-        chapterItem: {
+        chapterListHeader: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingVertical: 15,
-          paddingHorizontal: 10,
-          backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#ffffff',
-          borderRadius: 10,
-          marginBottom: 8,
-          elevation: 3,
+          paddingBottom: 4,
+        },
+        chapterCount: {
+          fontSize: 13,
+          color: isDark ? '#888' : '#999',
+        },
+        searchbar: {
+          borderRadius: 12,
+          marginBottom: 4,
+        },
+        chapterItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+          gap: 10,
+        },
+        lastReadedItem: {
+          backgroundColor: isDark ? '#1a2a1a' : '#f0fff0',
         },
         chapterTitleContainer: {
-          flex: 2,
+          flex: 1,
         },
         chapterText: {
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: '600',
-          color: colorScheme === 'dark' ? '#ffffff' : '#333333',
+          color: isDark ? '#e0e0e0' : '#333',
+        },
+        lastReadedTag: {
+          fontSize: 10,
+          fontWeight: 'bold',
+          color: theme.colors.primary,
+          marginTop: 2,
         },
         chapterDetailsContainer: {
-          flex: 1,
           alignItems: 'flex-end',
+          gap: 2,
         },
         chapterDetailText: {
-          fontSize: 12,
-          color: colorScheme === 'dark' ? '#cccccc' : '#666666',
-          marginBottom: 3,
+          fontSize: 11,
+          color: isDark ? '#aaa' : '#888',
         },
         lastReadedText: {
           color: theme.colors.onPrimaryContainer,
           fontWeight: 'bold',
         },
         chapterDivider: {
-          backgroundColor: 'transparent',
-          height: 0,
+          backgroundColor: isDark ? '#2b2b2b' : '#e0e0e0',
+          height: 0.8,
         },
       }),
     [
+      isDark,
       colorScheme,
       dimensions.width,
       globalStyles.text.color,
       theme.colors.onPrimaryContainer,
       theme.colors.onSecondaryContainer,
       theme.colors.secondaryContainer,
+      theme.colors.primary,
     ],
   );
 }
