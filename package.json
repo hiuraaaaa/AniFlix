@@ -64,7 +64,7 @@
     "react-native-system-navigation-bar": "^2.8.0",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.8.1",
-    "react-native-zip-archive": "^7.0.2",
+    "react-native-zip-archive": "6.1.0",
     "url": "^0.11.3"
   },
   "devDependencies": {
