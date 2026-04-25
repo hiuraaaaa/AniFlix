@@ -8,6 +8,7 @@ import {
   useNavigation,
 } from '@react-navigation/native';
 import { FlashList, ListRenderItemInfo, useMappingHelper } from '@shopify/flash-list';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, {
   memo,
   use,
@@ -19,6 +20,8 @@ import React, {
   useState,
 } from 'react';
 import {
+  Dimensions,
+  ScrollView as RNScrollView,
   ScrollViewProps,
   StyleSheet,
   Text,
@@ -28,7 +31,7 @@ import {
   View,
 } from 'react-native';
 import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
-import { useTheme } from 'react-native-paper';
+import { TouchableOpacity as TouchableOpacityPaper, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EpisodeBaruHome as EpisodeBaruType, JadwalAnime, NewAnimeList } from '@/types/anime';
@@ -38,6 +41,7 @@ import Announcment from '@component/misc/Announcement';
 import { ListAnimeComponent } from '@component/misc/ListAnimeComponent';
 import Skeleton from '@component/misc/Skeleton';
 import { TouchableOpacity } from '@component/misc/TouchableOpacityRNGH';
+import ImageLoading from '@component/misc/ImageLoading';
 import {
   ComicsListContext,
   EpisodeBaruHomeContext,
@@ -53,10 +57,70 @@ import { FilmHomePage, getHomepage, getLatestMovies, getLatestSeries } from '@ut
 export const MIN_IMAGE_HEIGHT = 160;
 export const MIN_IMAGE_WIDTH = 90;
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
 
 const Home = memo(HomeList);
 export default Home;
+
+// Banner Carousel
+function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: HomeProps['navigation'] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<RNScrollView>(null);
+  const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
+  const items = data.slice(0, 8);
+
+  if (items.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <RNScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={e => {
+          const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          setActiveIndex(idx);
+        }}
+        scrollEventThrottle={16}>
+        {items.map((item, i) => (
+          <TouchableOpacity
+            key={i}
+            style={{ width: SCREEN_WIDTH, height: 200 }}
+            onPress={() => {
+              navigation.dispatch(StackActions.push('FromUrl', { title: item.title, link: item.url, type: 'film' }));
+            }}>
+            <ImageLoading source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover">
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, justifyContent: 'flex-end', padding: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>UNGGULAN</Text>
+                  </View>
+                  {'rating' in item && item.rating && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <MaterialIcon name="star" size={12} color="#FFD700" />
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{item.rating}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text numberOfLines={2} style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', lineHeight: 20 }}>{item.title}</Text>
+              </LinearGradient>
+            </ImageLoading>
+          </TouchableOpacity>
+        ))}
+      </RNScrollView>
+      {/* Dots */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 }}>
+        {items.map((_, i) => (
+          <View key={i} style={{ width: i === activeIndex ? 16 : 6, height: 4, borderRadius: 2, backgroundColor: i === activeIndex ? theme.colors.primary : isDark ? '#444' : '#ccc' }} />
+        ))}
+      </View>
+    </View>
+  );
+}
 
 function HomeList(props: HomeProps) {
   const globalStyles = useGlobalStyles();
@@ -68,15 +132,11 @@ function HomeList(props: HomeProps) {
   const { paramsState: data, setParamsState: setData } = useContext(EpisodeBaruHomeContext);
   const [refresh, setRefresh] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
-  const windowSize = useWindowDimensions();
-
-
 
   const refreshing = useCallback(() => {
     setRefresh(true);
     setData?.(val => ({ ...val, newAnime: [] }));
     setRefreshingKey(val => val + 1);
-
     setTimeout(() => {
       AnimeAPI.home()
         .then(async jsondata => {
@@ -91,24 +151,16 @@ function HomeList(props: HomeProps) {
   }, [setData]);
 
   const renderJadwalAnime = useCallback(
-    ({ item }: { item: keyof JadwalAnime }) => {
-      return <JadwalComponent item={item} props={props} />;
-    },
+    ({ item }: { item: keyof JadwalAnime }) => <JadwalComponent item={item} props={props} />,
     [props],
   );
 
   const listRef = useRef<LegendListRef>(null);
   const [jadwalHidden, setJadwalHidden] = useState(true);
-  const toggleJadwal = useCallback(() => {
-    setJadwalHidden(x => !x);
-  }, []);
+  const toggleJadwal = useCallback(() => setJadwalHidden(x => !x), []);
   useEffect(() => {
     if (!jadwalHidden) {
-      listRef.current?.scrollToIndex({
-        index: 0,
-        animated: true,
-        viewPosition: 0.5,
-      });
+      listRef.current?.scrollToIndex({ index: 0, animated: true, viewPosition: 0.5 });
     }
   }, [jadwalHidden]);
   const jadwalDataArray = useMemo(
@@ -116,26 +168,14 @@ function HomeList(props: HomeProps) {
     [data?.jadwalAnime, jadwalHidden],
   );
 
-  const [filmHomepageData, setFilmHomepageData] = useState<Awaited<ReturnType<typeof getHomepage>>>(
-    {
-      featured: [],
-      trending: [],
-    },
-  );
+  const [filmHomepageData, setFilmHomepageData] = useState<Awaited<ReturnType<typeof getHomepage>>>({ featured: [], trending: [] });
   const [isFilmError, setIsFilmError] = useState(false);
 
   useEffect(() => {
-    setFilmHomepageData({
-      featured: [],
-      trending: [],
-    });
+    setFilmHomepageData({ featured: [], trending: [] });
     setIsFilmError(false);
     queueMicrotask(() => {
-      getHomepage()
-        .then(setFilmHomepageData)
-        .catch(() => {
-          setIsFilmError(true);
-        });
+      getHomepage().then(setFilmHomepageData).catch(() => setIsFilmError(true));
     });
   }, [refreshingKey]);
 
@@ -150,7 +190,7 @@ function HomeList(props: HomeProps) {
           style={{ zIndex: 1 }}
           refreshing={refresh}
           onRefresh={refreshing}
-          progressBackgroundColor={colorScheme === 'dark' ? '#121212' : '#ffffff'}
+          progressBackgroundColor={isDark ? '#121212' : '#ffffff'}
           colors={[theme.colors.primary]}
         />
       }
@@ -162,15 +202,17 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-            <Text style={{
-              fontSize: 28,
-              fontWeight: 'bold',
-              color: isDark ? '#E0E0E0' : '#333',
-            }}>
-              Lunar
-            </Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Lunar</Text>
           </View>
+
+          {/* Banner Carousel */}
+          {filmHomepageData.featured.length > 0 && (
+            <BannerCarousel data={filmHomepageData.featured} navigation={props.navigation} />
+          )}
+
+          {/* Anime Terbaru - Grid 3 kolom */}
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
@@ -178,12 +220,15 @@ function HomeList(props: HomeProps) {
             data={data}
             props={props}
           />
+
+          {/* Film Unggulan - horizontal scroll */}
           <FeaturedFilmList
             data={filmHomepageData.featured}
             isError={isFilmError}
             props={props}
             key={'film_featured' + refreshingKey}
           />
+
           <TrendingFilmList
             data={filmHomepageData.trending}
             isError={isFilmError}
@@ -194,18 +239,12 @@ function HomeList(props: HomeProps) {
           <LatestSeriesList props={props} key={'series_latest' + refreshingKey} />
           <MovieList props={props} key={'anime_movie' + refreshingKey} />
           <ComicList key={'comick' + refreshingKey} />
+
           <TouchableOpacity
             onPress={toggleJadwal}
-            style={[
-              styles.scheduleSection,
-              { flexDirection: 'row', justifyContent: 'space-between' },
-            ]}>
-            <Text style={styles.sectionTitle}>Jadwal Anime</Text>
-            <MaterialIcons
-              name={jadwalHidden ? 'arrow-downward' : 'arrow-upward'}
-              size={20}
-              color={styles.sectionTitle.color}
-            />
+            style={[styles.scheduleSection, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+            <Text style={styles.sectionTitle}>JADWAL ANIME</Text>
+            <MaterialIcons name={jadwalHidden ? 'arrow-downward' : 'arrow-upward'} size={18} color={styles.sectionTitle.color} />
           </TouchableOpacity>
         </>
       }
@@ -217,265 +256,7 @@ function HomeList(props: HomeProps) {
   );
 }
 
-const FeaturedFilmList = memo(FeaturedFilmListUNMEMO);
-function FeaturedFilmListUNMEMO({
-  props,
-  data,
-  isError,
-}: {
-  props: HomeProps;
-  data: FilmHomePage;
-  isError: boolean;
-}) {
-  const styles = useStyles();
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Film Unggulan</Text>
-      </View>
-
-      {isError && (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
-        </View>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 25) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'featured' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
-  );
-}
-
-const TrendingFilmList = memo(TrendingFilmListUNMEMO);
-function TrendingFilmListUNMEMO({
-  props,
-  data,
-  isError,
-}: {
-  props: HomeProps;
-  data: FilmHomePage;
-  isError: boolean;
-}) {
-  const styles = useStyles();
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Film Trending</Text>
-      </View>
-
-      {isError && (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
-        </View>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 25) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'featured' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
-  );
-}
-
-const LatestFilmList = memo(LatestFilmListUNMEMO);
-function LatestFilmListUNMEMO({ props }: { props: HomeProps }) {
-  const styles = useStyles();
-  const { paramsState: data, setParamsState: setData } = useContext(FilmListHomeContext);
-  const [isError, setIsError] = useState(false);
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  useEffect(() => {
-    setData?.([]);
-    queueMicrotask(() => {
-      getLatestMovies()
-        .then(movieData => {
-          if ('isError' in movieData) {
-            setIsError(true);
-          } else {
-            setData?.(movieData);
-          }
-        })
-        .catch(() => setIsError(true));
-    });
-  }, [setData]);
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Film Terbaru</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          onPress={() => {
-            props.navigation.dispatch(StackActions.push('SeeMore', { type: 'FilmList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
-        </TouchableOpacity>
-      </View>
-
-      {isError && (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
-        </View>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 36) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'latest' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
-  );
-}
-const LatestSeriesList = memo(LatestSeriesListUNMEMO);
-function LatestSeriesListUNMEMO({ props }: { props: HomeProps }) {
-  const styles = useStyles();
-  const { paramsState: data, setParamsState: setData } = useContext(SeriesListHomeContext);
-  const [isError, setIsError] = useState(false);
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  useEffect(() => {
-    setData?.([]);
-    queueMicrotask(() => {
-      getLatestSeries()
-        .then(movieData => {
-          setData?.(movieData);
-        })
-        .catch(() => setIsError(true));
-    });
-  }, [setData]);
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Series Terbaru</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          onPress={() => {
-            props.navigation.dispatch(StackActions.push('SeeMore', { type: 'SeriesList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
-        </TouchableOpacity>
-      </View>
-
-      {isError && (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
-        </View>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 36) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'latest' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
-  );
-}
-
+// Grid section for anime
 const EpisodeBaru = memo(
   EpisodeBaruUNMEMO,
   (prev, next) =>
@@ -486,10 +267,7 @@ const EpisodeBaru = memo(
 );
 
 function EpisodeBaruUNMEMO({
-  styles,
-  data,
-  props,
-  isRefreshing,
+  styles, data, props, isRefreshing,
 }: {
   data: EpisodeBaruType | undefined;
   props: HomeProps;
@@ -497,10 +275,12 @@ function EpisodeBaruUNMEMO({
   styles: ReturnType<typeof useStyles>;
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
+  const dimensions = useWindowDimensions();
+
   const renderNewAnime = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
-        gap
+        gridMode
         newAnimeData={item}
         key={'btn' + item.title + item.episode}
         navigationProp={props.navigation}
@@ -512,37 +292,152 @@ function EpisodeBaruUNMEMO({
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Episode Anime Terbaru</Text>
+        <Text style={styles.sectionTitle}>ON-GOING</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
-          onPress={() => {
-            props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
+          onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }))}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
         </TouchableOpacity>
       </View>
       {(data?.newAnime.length || 0) > 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={(data?.newAnime ?? []).slice(0, 25)}
-          keyExtractor={z => z.title}
-          renderItem={renderNewAnime}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 2 }}>
+          {(data?.newAnime ?? []).slice(0, 9).map(item => (
+            <ListAnimeComponent
+              gridMode
+              newAnimeData={item}
+              key={'grid' + item.title + item.episode}
+              navigationProp={props.navigation}
+            />
+          ))}
+        </View>
       ) : isRefreshing ? (
-        <ShowSkeletonLoading />
+        <ShowSkeletonLoading grid />
       ) : (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 }}>
+          <MaterialIcon name="error-outline" size={20} color="#d80000" />
+          <Text style={styles.errorText}>Gagal mendapatkan data</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+// Horizontal scroll sections
+const FeaturedFilmList = memo(FeaturedFilmListUNMEMO);
+function FeaturedFilmListUNMEMO({ props, data, isError }: { props: HomeProps; data: FilmHomePage; isError: boolean }) {
+  const styles = useStyles();
+  const renderMovie = useCallback(
+    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
+      <ListAnimeComponent gap newAnimeData={item} type="film" key={'btn' + item.title} navigationProp={props.navigation} />
+    ),
+    [props.navigation],
+  );
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>FILM UNGGULAN</Text>
+      </View>
+      {isError ? (
+        <Text style={styles.errorText}>Gagal mendapatkan data</Text>
+      ) : data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 25) ?? []} renderItem={renderMovie} keyExtractor={z => 'featured' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : (
+        <ShowSkeletonLoading />
+      )}
+    </View>
+  );
+}
+
+const TrendingFilmList = memo(TrendingFilmListUNMEMO);
+function TrendingFilmListUNMEMO({ props, data, isError }: { props: HomeProps; data: FilmHomePage; isError: boolean }) {
+  const styles = useStyles();
+  const renderMovie = useCallback(
+    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
+      <ListAnimeComponent gap newAnimeData={item} type="film" key={'btn' + item.title} navigationProp={props.navigation} />
+    ),
+    [props.navigation],
+  );
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>FILM TRENDING</Text>
+      </View>
+      {isError ? (
+        <Text style={styles.errorText}>Gagal mendapatkan data</Text>
+      ) : data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 25) ?? []} renderItem={renderMovie} keyExtractor={z => 'trending' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : (
+        <ShowSkeletonLoading />
+      )}
+    </View>
+  );
+}
+
+const LatestFilmList = memo(LatestFilmListUNMEMO);
+function LatestFilmListUNMEMO({ props }: { props: HomeProps }) {
+  const styles = useStyles();
+  const { paramsState: data, setParamsState: setData } = useContext(FilmListHomeContext);
+  const [isError, setIsError] = useState(false);
+  const renderMovie = useCallback(
+    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
+      <ListAnimeComponent gap newAnimeData={item} type="film" key={'btn' + item.title} navigationProp={props.navigation} />
+    ),
+    [props.navigation],
+  );
+  useEffect(() => {
+    setData?.([]);
+    queueMicrotask(() => {
+      getLatestMovies().then(movieData => {
+        if ('isError' in movieData) setIsError(true);
+        else setData?.(movieData);
+      }).catch(() => setIsError(true));
+    });
+  }, [setData]);
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>FILM TERBARU</Text>
+        <TouchableOpacity style={styles.seeMoreButton} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'FilmList' }))}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
+        </TouchableOpacity>
+      </View>
+      {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
+      : data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 36) ?? []} renderItem={renderMovie} keyExtractor={z => 'latest' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : <ShowSkeletonLoading />}
+    </View>
+  );
+}
+
+const LatestSeriesList = memo(LatestSeriesListUNMEMO);
+function LatestSeriesListUNMEMO({ props }: { props: HomeProps }) {
+  const styles = useStyles();
+  const { paramsState: data, setParamsState: setData } = useContext(SeriesListHomeContext);
+  const [isError, setIsError] = useState(false);
+  const renderMovie = useCallback(
+    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
+      <ListAnimeComponent gap newAnimeData={item} type="film" key={'btn' + item.title} navigationProp={props.navigation} />
+    ),
+    [props.navigation],
+  );
+  useEffect(() => {
+    setData?.([]);
+    queueMicrotask(() => {
+      getLatestSeries().then(movieData => setData?.(movieData)).catch(() => setIsError(true));
+    });
+  }, [setData]);
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>SERIES TERBARU</Text>
+        <TouchableOpacity style={styles.seeMoreButton} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'SeriesList' }))}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
+        </TouchableOpacity>
+      </View>
+      {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
+      : data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 36) ?? []} renderItem={renderMovie} keyExtractor={z => 'series' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : <ShowSkeletonLoading />}
     </View>
   );
 }
@@ -553,80 +448,37 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   const { paramsState: data, setParamsState: setData } = useContext(MovieListHomeContext);
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
-
   const renderMovie = useCallback(
     ({ item }: ListRenderItemInfo<Movies>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="movie"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
+      <ListAnimeComponent gap newAnimeData={item} type="movie" key={'btn' + item.title} navigationProp={props.navigation} />
     ),
     [props.navigation],
   );
-
   useEffect(() => {
     setData?.([]);
     queueMicrotask(() => {
-      getLatestMovie()
-        .then(movieData => {
-          if ('isError' in movieData) {
-            setIsError(true);
-          } else {
-            setData?.(movieData);
-          }
-        })
-        .catch(() => setIsError(true));
+      getLatestMovie().then(movieData => {
+        if ('isError' in movieData) setIsError(true);
+        else setData?.(movieData);
+      }).catch(() => setIsError(true));
     });
   }, [setData]);
-
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Movie Terbaru</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          disabled={data?.length === 0}
-          onPress={() => {
-            props.navigation.dispatch(StackActions.push('SeeMore', { type: 'MovieList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
+        <Text style={styles.sectionTitle}>MOVIE TERBARU</Text>
+        <TouchableOpacity style={styles.seeMoreButton} disabled={data?.length === 0} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'MovieList' }))}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
         </TouchableOpacity>
       </View>
-
-      {isError && (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'connectToServer' }],
-            });
-          }}
-          style={styles.errorContainer}>
-          <MaterialIcon name="refresh" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Ketuk disini untuk mencoba ulang.
-          </Text>
+      {isError ? (
+        <TouchableOpacity onPress={() => navigation.reset({ index: 0, routes: [{ name: 'connectToServer' }] })} style={styles.errorContainer}>
+          <MaterialIcon name="refresh" size={20} color="#d80000" />
+          <Text style={styles.errorText}>Ketuk untuk coba ulang</Text>
         </TouchableOpacity>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 25) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
+      ) : data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 25) ?? []} renderItem={renderMovie} keyExtractor={z => z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : <ShowSkeletonLoading />}
     </View>
   );
 }
@@ -636,100 +488,56 @@ function ComicListUNMEMO() {
   const styles = useStyles();
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator, 'AnimeDetail'>>();
-
   const { paramsState: data, setParamsState: setData } = useContext(ComicsListContext);
-
   useEffect(() => {
     queueMicrotask(() => {
-      getLatestComicsReleases()
-        .then(z => {
-          setData?.(z);
-        })
-        .catch(() => setIsError(true));
+      getLatestComicsReleases().then(z => setData?.(z)).catch(() => setIsError(true));
     });
-    return () => {
-      setData?.([]);
-    };
+    return () => setData?.([]);
   }, [setData]);
-
   const renderComics = useCallback(
     ({ item }: ListRenderItemInfo<LatestComicsRelease>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="comics"
-        key={'btn' + item.title}
-        // @ts-expect-error
-        navigationProp={navigation}
-      />
+      // @ts-expect-error
+      <ListAnimeComponent gap newAnimeData={item} type="comics" key={'btn' + item.title} navigationProp={navigation} />
     ),
     [navigation],
   );
-
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Komik Terbaru</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          disabled={data?.length === 0}
-          onPress={() => {
-            navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
+        <Text style={styles.sectionTitle}>KOMIK TERBARU</Text>
+        <TouchableOpacity style={styles.seeMoreButton} disabled={data?.length === 0} onPress={() => navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }))}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
         </TouchableOpacity>
       </View>
-
-      {isError && (
-        <View>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
-          </Text>
-        </View>
-      )}
-
-      {data && data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data.slice(0, 24)}
-          renderItem={renderComics}
-          keyExtractor={z => z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
+      {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
+      : data && data?.length !== 0 ? (
+        <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data.slice(0, 24)} renderItem={renderComics} keyExtractor={z => z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
+      ) : <ShowSkeletonLoading />}
     </View>
   );
 }
 
-function ShowSkeletonLoading() {
+function ShowSkeletonLoading({ grid }: { grid?: boolean }) {
   const dimensions = useWindowDimensions();
-  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 3.5;
-  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2.8;
-  LIST_BACKGROUND_HEIGHT = Math.max(LIST_BACKGROUND_HEIGHT, MIN_IMAGE_HEIGHT);
-  LIST_BACKGROUND_WIDTH = Math.max(LIST_BACKGROUND_WIDTH, MIN_IMAGE_WIDTH);
+  const GRID_W = (dimensions.width - 8) / 3;
+  const GRID_H = GRID_W * 1.5;
+  const LIST_W = dimensions.width * 0.32;
+  const LIST_H = LIST_W * 1.45;
+
+  if (grid) {
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 2 }}>
+        {[1, 2, 3, 4, 5, 6].map((_, i) => (
+          <Skeleton key={i} width={GRID_W} height={GRID_H} style={{ borderRadius: 8 }} />
+        ))}
+      </View>
+    );
+  }
   return (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
-      {[1, 2, 3].map((_, index) => (
-        <View key={index} style={{ gap: 3 }}>
-          <Skeleton
-            key={index + 'image'}
-            width={LIST_BACKGROUND_WIDTH}
-            height={LIST_BACKGROUND_HEIGHT}
-            style={{ borderRadius: 6 }}
-          />
-          <Skeleton key={index + 'title'} width={LIST_BACKGROUND_WIDTH} height={16} />
-          <View key={index + 'info'} style={{ flexDirection: 'row', gap: 2 }}>
-            <Skeleton key={index + 'info1'} width={LIST_BACKGROUND_WIDTH / 2} height={16} />
-            <Skeleton key={index + 'info2'} width={LIST_BACKGROUND_WIDTH / 2} height={16} />
-          </View>
-        </View>
+    <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 4 }}>
+      {[1, 2, 3].map((_, i) => (
+        <Skeleton key={i} width={LIST_W} height={LIST_H} style={{ borderRadius: 8 }} />
       ))}
     </View>
   );
@@ -744,18 +552,10 @@ function JadwalComponent({ item, props }: { item: keyof JadwalAnime; props: Home
       <Text style={styles.scheduleDay}>{item}</Text>
       {data?.jadwalAnime[item]!.map((x, index) => (
         <TouchableOpacity
-          style={[
-            styles.scheduleItem,
-            index % 2 === 0 ? styles.scheduleItemEven : styles.scheduleItemOdd,
-          ]}
+          style={[styles.scheduleItem, index % 2 === 0 ? styles.scheduleItemEven : styles.scheduleItemOdd]}
           key={getMappingKey(x.title, index)}
           onPress={() => {
-            props.navigation.dispatch(
-              StackActions.push('FromUrl', {
-                title: x.title,
-                link: x.link,
-              }),
-            );
+            props.navigation.dispatch(StackActions.push('FromUrl', { title: x.title, link: x.link }));
           }}>
           <Text style={styles.scheduleTitle}>{x.title}</Text>
         </TouchableOpacity>
@@ -778,71 +578,67 @@ function useStyles() {
       StyleSheet.create({
         container: {
           flex: 1,
-          backgroundColor: isDark ? '#121212' : '#f0f0f0',
+          backgroundColor: isDark ? '#111' : '#f0f0f0',
+        },
+        header: {
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 8,
+        },
+        headerTitle: {
+          fontSize: 30,
+          fontWeight: 'bold',
+          color: isDark ? '#fff' : '#111',
+          letterSpacing: 0.5,
         },
         sectionContainer: {
-          //backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-         // borderRadius: 12,
-          paddingVertical: 8,
-        //  marginHorizontal: 3,
-          marginBottom: 12,
-         // elevation: 1,
+          paddingVertical: 10,
+          marginBottom: 4,
         },
         sectionHeader: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
           paddingHorizontal: 12,
-          marginBottom: 8,
+          marginBottom: 10,
         },
         sectionTitle: {
-          fontSize: 15,
+          fontSize: 13,
           fontWeight: 'bold',
-          color: isDark ? '#E0E0E0' : '#333',
+          color: isDark ? '#E0E0E0' : '#222',
+          letterSpacing: 1,
         },
         seeMoreButton: {
           flexDirection: 'row',
           alignItems: 'center',
         },
         seeMoreText: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: 'bold',
           color: theme.colors.primary,
-          marginRight: 2,
+          letterSpacing: 0.5,
         },
         scheduleSection: {
-          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-          borderRadius: 12,
+          backgroundColor: isDark ? '#1a1a1a' : '#fff',
+          borderRadius: 8,
           padding: 12,
           marginHorizontal: 12,
           marginBottom: 12,
           elevation: 1,
         },
-        scheduleContainer: {
-          marginBottom: 12,
-        },
+        scheduleContainer: { marginBottom: 12 },
         scheduleDay: {
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 'bold',
           color: theme.colors.primary,
           marginBottom: 6,
           textAlign: 'center',
+          letterSpacing: 1,
         },
-        scheduleItem: {
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-        },
-        scheduleItemEven: {
-          backgroundColor: isDark ? '#252525' : '#F5F5F5',
-        },
-        scheduleItemOdd: {
-          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-        },
-        scheduleTitle: {
-          fontSize: 13,
-          color: isDark ? '#E0E0E0' : '#333',
-          textAlign: 'center',
-        },
+        scheduleItem: { paddingVertical: 10, paddingHorizontal: 12 },
+        scheduleItemEven: { backgroundColor: isDark ? '#252525' : '#f5f5f5' },
+        scheduleItemOdd: { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
+        scheduleTitle: { fontSize: 13, color: isDark ? '#e0e0e0' : '#333', textAlign: 'center' },
         errorContainer: {
           flexDirection: 'row',
           alignItems: 'center',
@@ -851,11 +647,11 @@ function useStyles() {
           backgroundColor: isDark ? '#2A1E1E' : '#FFEBEE',
           borderRadius: 8,
           marginHorizontal: 12,
+          gap: 8,
         },
         errorText: {
-          fontSize: 13,
+          fontSize: 12,
           color: '#d80000',
-          marginLeft: 6,
           textAlign: 'center',
         },
       }),
