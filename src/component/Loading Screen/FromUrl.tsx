@@ -1,7 +1,7 @@
 import { StackActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useRef, useState } from 'react';
-import { Text, ToastAndroid, View } from 'react-native';
+import { StyleSheet, Text, ToastAndroid, useColorScheme, View } from 'react-native';
 
 import { RootStackNavigator } from '@/types/navigation';
 import watchLaterJSON from '@/types/watchLaterJSON';
@@ -22,13 +22,17 @@ import { ComicsDetail, getComicsDetailFromUrl, getComicsReading } from '@utils/s
 import { getFilmDetails, HashProgressData } from '@utils/scrapers/film';
 import { getKomikuDetailFromUrl, getKomikuReading, KomikuDetail } from '@utils/scrapers/komiku';
 import { setFilmStreamHistory } from '@utils/setFilmStreamHistory';
-import { Button } from 'react-native-paper';
+import { Button, useTheme } from 'react-native-paper';
 import URL from 'url';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FromUrl'>;
 
 function FromUrl(props: Props) {
   const globalStyles = useGlobalStyles();
+  const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const styles = useStyles();
 
   const [hashProgress, setHashProgress] = useState<HashProgressData | null>(null);
   const speedUpRef = useRef<(() => void) | null>(null);
@@ -39,12 +43,10 @@ function FromUrl(props: Props) {
   }, []);
 
   const randomTips = useRef<string>(
-    // eslint-disable-next-line no-bitwise
     randomTipsArray[~~(Math.random() * randomTipsArray.length)],
   ).current;
 
   const randomQuote = useRef(
-    // eslint-disable-next-line no-bitwise
     runningTextArray[~~(Math.random() * runningTextArray.length)] ?? {},
   ).current;
 
@@ -66,13 +68,13 @@ function FromUrl(props: Props) {
     },
     [props.navigation],
   );
+
   useFocusEffect(
     useCallback(() => {
       props.navigation.setOptions({ headerTitle: props.route.params.title });
       const abort: AbortController = new AbortController();
       let link: string;
       try {
-        // fix invalid url crash
         link = generateUrlWithLatestDomain(props.route.params.link);
       } catch {
         link = props.route.params.link;
@@ -87,7 +89,7 @@ function FromUrl(props: Props) {
         );
         return;
       }
-      const resolution = props.route.params.historyData?.resolution; // only if FromUrl is called from history component
+      const resolution = props.route.params.historyData?.resolution;
       if (link.includes('nanimex')) {
         props.navigation.goBack();
         DialogManager.alert(
@@ -102,19 +104,11 @@ function FromUrl(props: Props) {
             .then(result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
               if ('isError' in result) {
-                DialogManager.alert(
-                  'Error',
-                  'Inisialisasi data movie gagal! Silahkan buka ulang aplikasi/reload/ketuk teks merah pada beranda untuk mencoba mengambil data yang diperlukan',
-                );
+                DialogManager.alert('Error', 'Inisialisasi data movie gagal! Silahkan buka ulang aplikasi/reload/ketuk teks merah pada beranda untuk mencoba mengambil data yang diperlukan');
                 props.navigation.goBack();
                 return;
               }
-              props.navigation.dispatch(
-                StackActions.replace('MovieDetail', {
-                  data: result,
-                  link: link,
-                }),
-              );
+              props.navigation.dispatch(StackActions.replace('MovieDetail', { data: result, link }));
             })
             .catch(handleError);
         } else {
@@ -122,38 +116,16 @@ function FromUrl(props: Props) {
             .then(async result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
               if ('isError' in result) {
-                DialogManager.alert(
-                  'Error',
-                  'Inisialisasi data movie gagal! Silahkan buka ulang aplikasi/reload/ketuk teks merah pada beranda untuk mencoba mengambil data yang diperlukan',
-                );
+                DialogManager.alert('Error', 'Inisialisasi data movie gagal! Silahkan buka ulang aplikasi/reload/ketuk teks merah pada beranda untuk mencoba mengambil data yang diperlukan');
                 props.navigation.goBack();
                 return;
               }
-              props.navigation.dispatch(
-                StackActions.replace('Video', {
-                  data: result,
-                  link: link,
-                  historyData: props.route.params.historyData,
-                  isMovie: true,
-                }),
-              );
-              // History
-              setHistory(
-                result,
-                link,
-                false,
-                props.route.params.historyData,
-                props.route.params.type === 'movie',
-              );
-
+              props.navigation.dispatch(StackActions.replace('Video', { data: result, link, historyData: props.route.params.historyData, isMovie: true }));
+              setHistory(result, link, false, props.route.params.historyData, props.route.params.type === 'movie');
               const episodeIndex = result.title.toLowerCase().indexOf(' episode');
               const title = episodeIndex >= 0 ? result.title.slice(0, episodeIndex) : result.title;
-              const watchLater: watchLaterJSON[] = JSON.parse(
-                (await DatabaseManager.get('watchLater'))!,
-              );
-              const watchLaterIndex = watchLater.findIndex(
-                z => z.title.trim() === title.trim() && z.isMovie === true,
-              );
+              const watchLater: watchLaterJSON[] = JSON.parse((await DatabaseManager.get('watchLater'))!);
+              const watchLaterIndex = watchLater.findIndex(z => z.title.trim() === title.trim() && z.isMovie === true);
               if (watchLaterIndex >= 0) {
                 controlWatchLater('delete', watchLaterIndex);
                 ToastAndroid.show(`${title} dihapus dari daftar tonton nanti`, ToastAndroid.SHORT);
@@ -165,67 +137,33 @@ function FromUrl(props: Props) {
         AnimeAPI.fromUrl(link, resolution, !!resolution, undefined, abort.signal)
           .then(async result => {
             if (result === 'Unsupported') {
-              DialogManager.alert(
-                'Tidak didukung!',
-                'Anime yang kamu tuju tidak memiliki data yang didukung!',
-              );
+              DialogManager.alert('Tidak didukung!', 'Anime yang kamu tuju tidak memiliki data yang didukung!');
               props.navigation.goBack();
               return;
             }
             try {
               if (result.type === 'animeDetail') {
                 if (result.genres.includes('')) {
-                  DialogManager.alert(
-                    'Perhatian!',
-                    'Anime ini mengandung genre ecchi. Mohon bijak dalam menonton.',
-                  );
+                  DialogManager.alert('Perhatian!', 'Anime ini mengandung genre ecchi. Mohon bijak dalam menonton.');
                 }
                 if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
-                props.navigation.dispatch(
-                  StackActions.replace('AnimeDetail', {
-                    data: result,
-                    link: link,
-                  }),
-                );
+                props.navigation.dispatch(StackActions.replace('AnimeDetail', { data: result, link }));
               } else if (result.type === 'animeStreaming') {
                 if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
-                props.navigation.dispatch(
-                  StackActions.replace('Video', {
-                    data: result,
-                    link: link,
-                    historyData: props.route.params.historyData,
-                  }),
-                );
-
-                // History
+                props.navigation.dispatch(StackActions.replace('Video', { data: result, link, historyData: props.route.params.historyData }));
                 setHistory(result, link, false, props.route.params.historyData);
-
                 const episodeIndex = result.title.toLowerCase().indexOf(' episode');
-                const title =
-                  episodeIndex >= 0 ? result.title.slice(0, episodeIndex) : result.title;
-                const watchLater: watchLaterJSON[] = JSON.parse(
-                  (await DatabaseManager.get('watchLater'))!,
-                );
+                const title = episodeIndex >= 0 ? result.title.slice(0, episodeIndex) : result.title;
+                const watchLater: watchLaterJSON[] = JSON.parse((await DatabaseManager.get('watchLater'))!);
                 const normalizeWatchLaterTitle = (str: string) => {
                   let resultString = str.split('(Episode')[0].trim();
-                  if (resultString.endsWith('BD')) {
-                    return replaceLast(resultString, 'BD', '');
-                  }
+                  if (resultString.endsWith('BD')) return replaceLast(resultString, 'BD', '');
                   return resultString;
                 };
-                const watchLaterIndex = watchLater.findIndex(
-                  z =>
-                    (z.link === result.episodeData.animeDetail ||
-                      normalizeWatchLaterTitle(z.title.trim()) === title.trim()) &&
-                    !z.isMovie &&
-                    !z.isComics,
-                );
+                const watchLaterIndex = watchLater.findIndex(z => (z.link === result.episodeData.animeDetail || normalizeWatchLaterTitle(z.title.trim()) === title.trim()) && !z.isMovie && !z.isComics);
                 if (watchLaterIndex >= 0) {
                   controlWatchLater('delete', watchLaterIndex);
-                  ToastAndroid.show(
-                    `${title} dihapus dari daftar tonton nanti`,
-                    ToastAndroid.SHORT,
-                  );
+                  ToastAndroid.show(`${title} dihapus dari daftar tonton nanti`, ToastAndroid.SHORT);
                 }
               }
             } catch (e: any) {
@@ -237,42 +175,19 @@ function FromUrl(props: Props) {
       } else if (props.route.params.type === 'film') {
         if (props.route.params.link.includes('tv12.idlix')) {
           props.navigation.goBack();
-          DialogManager.alert(
-            'Perhatian!',
-            'Dikarenakan perubahan terkait data film, history film lama tidak didukung, sehingga sebagai solusi, kamu harus mencari film ini secara manual di menu pencarian dan pilih episode yang sesuai.',
-          );
+          DialogManager.alert('Perhatian!', 'Dikarenakan perubahan terkait data film, history film lama tidak didukung, sehingga sebagai solusi, kamu harus mencari film ini secara manual di menu pencarian dan pilih episode yang sesuai.');
           return;
         }
         getFilmDetails(link, abort.signal, onProgressUpdate)
           .then(async data => {
             if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
             if (data.type === 'detail') {
-              props.navigation.dispatch(
-                StackActions.replace('FilmDetail', {
-                  data,
-                  link: link,
-                }),
-              );
-            } else if (
-              data.type === 'stream' &&
-              (props.route.params.historyData ||
-                props.navigation.getState().routes.find(z => z.name === 'FilmDetail'))
-            ) {
-              props.navigation.dispatch(
-                StackActions.replace('Video_Film', {
-                  data,
-                  link,
-                  historyData: props.route.params.historyData,
-                }),
-              );
+              props.navigation.dispatch(StackActions.replace('FilmDetail', { data, link }));
+            } else if (data.type === 'stream' && (props.route.params.historyData || props.navigation.getState().routes.find(z => z.name === 'FilmDetail'))) {
+              props.navigation.dispatch(StackActions.replace('Video_Film', { data, link, historyData: props.route.params.historyData }));
               await setFilmStreamHistory(link, data, props.route.params.historyData);
             } else {
-              props.navigation.dispatch(
-                StackActions.replace('FilmDetail', {
-                  data,
-                  link,
-                }),
-              );
+              props.navigation.dispatch(StackActions.replace('FilmDetail', { data, link }));
             }
           })
           .catch(handleError);
@@ -282,54 +197,29 @@ function FromUrl(props: Props) {
         const isSoftkomik = link.includes('softkomik');
         const isSoftkomikGoToDetail = isSoftkomik && !link.includes('/chapter/');
         const isKomikuGoToDetail = isKomiku && link.includes('/manga/');
-        const isKomikindoGoToDetail =
-          isKomikindo && !(link.includes('-chapter-') || link.includes('-chapte-'));
+        const isKomikindoGoToDetail = isKomikindo && !(link.includes('-chapter-') || link.includes('-chapte-'));
         const goToDetail = isKomikuGoToDetail || isKomikindoGoToDetail || isSoftkomikGoToDetail;
         if (goToDetail) {
-          const fetchComicsPromise = (
-            link.includes('komikindo') || link.includes('softkomik')
-              ? getComicsDetailFromUrl(link, abort.signal)
-              : getKomikuDetailFromUrl(link, abort.signal)
-          ) as Promise<ComicsDetail | KomikuDetail>;
+          const fetchComicsPromise = (link.includes('komikindo') || link.includes('softkomik') ? getComicsDetailFromUrl(link, abort.signal) : getKomikuDetailFromUrl(link, abort.signal)) as Promise<ComicsDetail | KomikuDetail>;
           fetchComicsPromise
             .then(result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
               if (result.genres.includes('Ecchi')) {
-                DialogManager.alert(
-                  'Perhatian!',
-                  'Komik ini mengandung genre ecchi. Mohon bijak dalam membaca.',
-                );
+                DialogManager.alert('Perhatian!', 'Komik ini mengandung genre ecchi. Mohon bijak dalam membaca.');
               }
-              props.navigation.dispatch(
-                StackActions.replace('ComicsDetail', {
-                  data: result,
-                  link: link,
-                }),
-              );
+              props.navigation.dispatch(StackActions.replace('ComicsDetail', { data: result, link }));
             })
             .catch(handleError);
         } else {
-          (link.includes('komikindo') || link.includes('softkomik')
-            ? getComicsReading
-            : getKomikuReading)(link, abort.signal)
+          (link.includes('komikindo') || link.includes('softkomik') ? getComicsReading : getKomikuReading)(link, abort.signal)
             .then(async result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
-              props.navigation.dispatch(
-                StackActions.replace('ComicsReading', {
-                  data: result,
-                  historyData: props.route.params.historyData,
-                  link: link,
-                }),
-              );
+              props.navigation.dispatch(StackActions.replace('ComicsReading', { data: result, historyData: props.route.params.historyData, link }));
               setHistory(result, link, false, props.route.params.historyData, false, true);
               const chapterIndex = result.title.toLowerCase().indexOf(' chapter');
               const title = chapterIndex >= 0 ? result.title.slice(0, chapterIndex) : result.title;
-              const watchLater: watchLaterJSON[] = JSON.parse(
-                (await DatabaseManager.get('watchLater'))!,
-              );
-              const watchLaterIndex = watchLater.findIndex(
-                z => z.title.trim() === title.trim() && z.isComics === true,
-              );
+              const watchLater: watchLaterJSON[] = JSON.parse((await DatabaseManager.get('watchLater'))!);
+              const watchLaterIndex = watchLater.findIndex(z => z.title.trim() === title.trim() && z.isComics === true);
               if (watchLaterIndex >= 0) {
                 controlWatchLater('delete', watchLaterIndex);
                 ToastAndroid.show(`${title} dihapus dari daftar tonton nanti`, ToastAndroid.SHORT);
@@ -338,173 +228,188 @@ function FromUrl(props: Props) {
             .catch(handleError);
         }
       }
-      return () => {
-        abort.abort();
-      };
-    }, [
-      handleError,
-      props.navigation,
-      props.route.params.historyData,
-      props.route.params.title,
-      props.route.params.type,
-      props.route.params.link,
-      onProgressUpdate,
-    ]),
+      return () => { abort.abort(); };
+    }, [handleError, props.navigation, props.route.params.historyData, props.route.params.title, props.route.params.type, props.route.params.link, onProgressUpdate]),
   );
 
   return (
-    <View style={{ flex: 1 }}>
-      <View
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          flex: 1,
-          paddingHorizontal: 24,
-        }}>
+    <View style={styles.container}>
+      <View style={styles.content}>
         <LoadingIndicator size={15} />
 
         {hashProgress ? (
-          <View style={{ alignItems: 'center', marginTop: 24, width: '100%' }}>
-            <Text
-              style={[
-                globalStyles.text,
-                {
-                  fontSize: 16,
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  color: hashProgress.isCompleted ? '#4CAF50' : globalStyles.text.color,
-                },
-              ]}>
-              {hashProgress.isCompleted
-                ? 'Proteksi Berhasil Dipecahkan!'
-                : 'Memecahkan Proteksi Keamanan'}
+          <View style={styles.hashContainer}>
+            <Text style={[styles.hashTitle, { color: hashProgress.isCompleted ? '#4CAF50' : globalStyles.text.color }]}>
+              {hashProgress.isCompleted ? '✓ Proteksi Berhasil Dipecahkan!' : 'Memecahkan Proteksi Keamanan'}
             </Text>
+            <Text style={styles.hashDifficulty}>Tingkat Kesulitan: {hashProgress.difficulty}</Text>
 
-            <Text style={[globalStyles.text, { fontSize: 13, opacity: 0.7, marginTop: 4 }]}>
-              Tingkat Kesulitan: {hashProgress.difficulty}
-            </Text>
-
-            <View
-              style={{
-                backgroundColor: hashProgress.isCompleted
-                  ? 'rgba(76, 175, 80, 0.1)'
-                  : 'rgba(255, 255, 255, 0.08)',
-                borderColor: hashProgress.isCompleted ? '#4CAF50' : 'transparent',
-                borderWidth: 1,
-                paddingVertical: 12,
-                paddingHorizontal: 32,
-                borderRadius: 12,
-                marginTop: 20,
-                marginBottom: 20,
-              }}>
-              <Text
-                style={[
-                  globalStyles.text,
-                  {
-                    fontSize: 28,
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    color: hashProgress.isCompleted ? '#4CAF50' : globalStyles.text.color,
-                  },
-                ]}>
+            <View style={[styles.hashTimerBox, { borderColor: hashProgress.isCompleted ? '#4CAF50' : 'transparent', backgroundColor: hashProgress.isCompleted ? 'rgba(76,175,80,0.1)' : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+              <Text style={[styles.hashTimer, { color: hashProgress.isCompleted ? '#4CAF50' : globalStyles.text.color }]}>
                 {hashProgress.elapsed} detik
               </Text>
             </View>
 
             {hashProgress.canSpeedUp && !hashProgress.isSpeedingUp && !hashProgress.isCompleted && (
-              <Button
-                onPress={() => speedUpRef.current?.()}
-                style={{
-                  marginBottom: 16,
-                  width: '80%',
-                  alignItems: 'center',
-                }}
-                mode="contained-tonal">
+              <Button onPress={() => speedUpRef.current?.()} style={styles.speedUpButton} mode="contained-tonal">
                 🚀 Percepat Proses
               </Button>
             )}
-
             {hashProgress.isSpeedingUp && !hashProgress.isCompleted && (
-              <Text
-                style={[
-                  globalStyles.text,
-                  {
-                    color: '#4CAF50',
-                    fontSize: 13,
-                    marginBottom: 16,
-                    fontStyle: 'italic',
-                  },
-                ]}>
-                ⚡ Mempercepat dengan multi-core...
-              </Text>
+              <Text style={styles.speedingText}>⚡ Mempercepat dengan multi-core...</Text>
             )}
-
             {!hashProgress.isCompleted ? (
               <>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    { textAlign: 'center', fontSize: 12, opacity: 0.6, lineHeight: 18 },
-                  ]}>
-                  Proses ini mungkin memakan waktu lama tergantung performa perangkat.
-                </Text>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    {
-                      textAlign: 'center',
-                      fontSize: 12,
-                      opacity: 0.8,
-                      marginTop: 8,
-                      color: '#ef233c',
-                      fontWeight: 'bold',
-                    },
-                  ]}>
-                  Tekan tombol KEMBALI untuk batal.
-                </Text>
+                <Text style={styles.hashNote}>Proses ini mungkin memakan waktu lama tergantung performa perangkat.</Text>
+                <Text style={styles.hashCancel}>Tekan tombol KEMBALI untuk batal.</Text>
               </>
             ) : (
-              <Text
-                style={[
-                  globalStyles.text,
-                  {
-                    textAlign: 'center',
-                    fontSize: 13,
-                    marginTop: 8,
-                    color: '#4CAF50',
-                    fontWeight: 'bold',
-                  },
-                ]}>
-                Menyiapkan Video...
-              </Text>
+              <Text style={[styles.hashNote, { color: '#4CAF50', fontWeight: 'bold' }]}>Menyiapkan Video...</Text>
             )}
           </View>
         ) : (
-          <>
-            <Text
-              style={[globalStyles.text, { fontWeight: 'bold', marginBottom: 20, marginTop: 20 }]}>
-              Mengambil data... Mohon tunggu sebentar!
-            </Text>
-            <Text style={[globalStyles.text, { textAlign: 'center', fontStyle: 'italic' }]}>
-              "{randomQuote.quote}"
-            </Text>
-            <Text
-              style={[
-                globalStyles.text,
-                { textAlign: 'center', marginTop: 5, fontWeight: 'bold' },
-              ]}>
-              — {randomQuote.by}
-            </Text>
-          </>
+          <View style={styles.quoteContainer}>
+            <Text style={styles.loadingText}>Mengambil data...</Text>
+            <View style={styles.quoteCard}>
+              <Text style={styles.quoteSymbol}>"</Text>
+              <Text style={styles.quoteText}>{randomQuote.quote}</Text>
+              <Text style={styles.quoteAuthor}>— {randomQuote.by}</Text>
+            </View>
+          </View>
         )}
       </View>
-      <View style={{ alignItems: 'center' }}>
-        <View style={{ position: 'absolute', bottom: 10 }}>
-          <Text style={[{ textAlign: 'center' }, globalStyles.text]}>{randomTips}</Text>
-        </View>
+
+      {/* Tips */}
+      <View style={styles.tipsContainer}>
+        <Text style={styles.tipsLabel}>💡 Tips</Text>
+        <Text style={styles.tipsText}>{randomTips}</Text>
       </View>
     </View>
   );
+}
+
+function useStyles() {
+  const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? '#0f0f0f' : '#f5f5f5',
+      justifyContent: 'space-between',
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      gap: 24,
+    },
+    quoteContainer: {
+      width: '100%',
+      alignItems: 'center',
+      gap: 16,
+    },
+    loadingText: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: isDark ? '#ccc' : '#555',
+    },
+    quoteCard: {
+      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+      borderRadius: 16,
+      padding: 20,
+      width: '100%',
+      elevation: 2,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.colors.primary,
+    },
+    quoteSymbol: {
+      fontSize: 32,
+      color: theme.colors.primary,
+      lineHeight: 32,
+      opacity: 0.6,
+      marginBottom: 4,
+    },
+    quoteText: {
+      fontSize: 14,
+      fontStyle: 'italic',
+      color: isDark ? '#e0e0e0' : '#444',
+      lineHeight: 22,
+      marginBottom: 10,
+    },
+    quoteAuthor: {
+      fontSize: 13,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+      textAlign: 'right',
+    },
+    tipsContainer: {
+      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+      padding: 16,
+      margin: 16,
+      borderRadius: 12,
+      elevation: 1,
+      gap: 4,
+    },
+    tipsLabel: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+    },
+    tipsText: {
+      fontSize: 13,
+      color: isDark ? '#ccc' : '#555',
+      lineHeight: 18,
+      textAlign: 'center',
+    },
+    hashContainer: {
+      width: '100%',
+      alignItems: 'center',
+      gap: 12,
+    },
+    hashTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
+    hashDifficulty: {
+      fontSize: 13,
+      color: isDark ? '#aaa' : '#777',
+    },
+    hashTimerBox: {
+      borderWidth: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      borderRadius: 12,
+    },
+    hashTimer: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
+    speedUpButton: {
+      width: '80%',
+    },
+    speedingText: {
+      color: '#4CAF50',
+      fontSize: 13,
+      fontStyle: 'italic',
+    },
+    hashNote: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: isDark ? '#aaa' : '#777',
+      lineHeight: 18,
+    },
+    hashCancel: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: '#ef233c',
+      fontWeight: 'bold',
+    },
+  });
 }
 
 export default FromUrl;
