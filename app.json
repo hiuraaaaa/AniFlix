@@ -17,6 +17,7 @@
     "runtimeVersion": "1.2.1",
     "adaptiveIcon": {
       "foregroundImage": "./assets/adaptive-icon.png",
+      "monochromeImage": "./assets/monochrome-icon.png",
       "backgroundColor": "#000000"
     },
     "intentFilters": [
