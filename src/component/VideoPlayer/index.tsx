@@ -113,7 +113,7 @@ function VideoPlayer({
       uri: streamingURL,
       metadata: {
         title,
-        artist: 'AniFlix',
+        artist: 'Lunar',
         artwork: thumbnailURL,
       },
       headers: {
