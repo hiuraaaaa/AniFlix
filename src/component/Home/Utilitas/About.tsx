@@ -11,6 +11,7 @@ import {
   TouchableRipple,
   useTheme,
 } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import DarkOverlay from '@component/misc/DarkOverlay';
 import { JoinDiscord } from '@component/misc/Social';
@@ -27,6 +28,15 @@ function About() {
   const theme = useTheme();
   const styles = useStyles();
 
+  const SectionHeader = ({ icon, label }: { icon: string; label: string }) => (
+    <View style={styles.sectionHeaderRow}>
+      <MaterialCommunityIcons name={icon} size={18} color={theme.colors.primary} />
+      <Text variant="titleMedium" style={styles.sectionHeader}>
+        {label}
+      </Text>
+    </View>
+  );
+
   const renderHeader = () => (
     <View>
       <View style={styles.headerContainer}>
@@ -37,28 +47,26 @@ function About() {
           color={theme.colors.onPrimaryContainer}
         />
         <Text variant="headlineMedium" style={styles.titleText}>
-          AniFlix
+          Lunar
         </Text>
         <Text variant="bodyMedium" style={styles.versionText}>
           {appPackage.version} • Build JS_{appPackage.OTAJSVersion}
         </Text>
         <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          Dikembangkan oleh Pirles
+          Dikembangkan oleh Robin
         </Text>
       </View>
 
       <Card style={styles.card}>
         <Card.Content>
           <Text variant="bodyMedium" style={{ textAlign: 'center', marginBottom: 8 }}>
-            AniFlix adalah aplikasi streaming anime non-komersial yang dibangun untuk tujuan
+            Lunar adalah aplikasi streaming anime non-komersial yang dibangun untuk tujuan
             pembelajaran mobile development menggunakan React Native.
           </Text>
         </Card.Content>
       </Card>
 
-      <Text variant="titleMedium" style={styles.sectionHeader}>
-        ⚖️ Pelepasan Tanggung Jawab
-      </Text>
+      <SectionHeader icon="scale-balance" label="Pelepasan Tanggung Jawab" />
       <Surface style={styles.surface} elevation={1}>
         <View style={{ padding: 16 }}>
           <Text variant="bodySmall" style={styles.disclaimerText}>
@@ -82,9 +90,7 @@ function About() {
         </View>
       </Surface>
 
-      <Text variant="titleMedium" style={styles.sectionHeader}>
-        📄 Lisensi Perangkat Lunak
-      </Text>
+      <SectionHeader icon="file-document" label="Lisensi Perangkat Lunak" />
       <Surface style={styles.surface} elevation={1}>
         <List.Item
           title="MIT License"
@@ -95,9 +101,7 @@ function About() {
         />
       </Surface>
 
-      <Text variant="titleMedium" style={styles.sectionHeader}>
-        Komunitas & Kontak
-      </Text>
+      <SectionHeader icon="account-group" label="Komunitas & Kontak" />
       <Surface style={styles.surface} elevation={1}>
         <View style={{ padding: 16, alignItems: 'center' }}>
           <Text variant="bodyMedium" style={{ marginBottom: 12, textAlign: 'center' }}>
@@ -107,9 +111,7 @@ function About() {
         </View>
       </Surface>
 
-      <Text variant="titleMedium" style={styles.sectionHeader}>
-        Kredit & Sumber Daya
-      </Text>
+      <SectionHeader icon="heart" label="Kredit & Sumber Daya" />
       <Surface style={styles.surface} elevation={1}>
         <List.Item
           title="Background Image"
@@ -132,9 +134,7 @@ function About() {
         />
       </Surface>
 
-      <Text variant="titleMedium" style={styles.sectionHeader}>
-        Open Source Libraries
-      </Text>
+      <SectionHeader icon="package-variant" label="Open Source Libraries" />
       <Text
         variant="bodySmall"
         style={{ marginHorizontal: 16, marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
@@ -217,10 +217,15 @@ function useStyles() {
           color: theme.colors.primary,
           marginBottom: 4,
         },
-        sectionHeader: {
+        sectionHeaderRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
           paddingHorizontal: 16,
           paddingTop: 24,
           paddingBottom: 8,
+        },
+        sectionHeader: {
           color: theme.colors.primary,
           fontWeight: 'bold',
         },
