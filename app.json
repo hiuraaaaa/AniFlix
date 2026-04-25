@@ -2,6 +2,7 @@
   "name": "Lunar",
   "slug": "lunar",
   "displayName": "Lunar",
+  "icon": "./assets/icon.png",
   "extra": {
     "eas": {
       "projectId": "a8fab8df-a6fc-4724-b527-fc05c98c90cc"
@@ -14,6 +15,10 @@
   "android": {
     "package": "com.hiura.lunar",
     "runtimeVersion": "1.2.1",
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
+      "backgroundColor": "#000000"
+    },
     "intentFilters": [
       {
         "action": "VIEW",
