@@ -235,7 +235,10 @@ function App() {
     };
   }, []);
 
+  // Nunggu font loaded dulu baru hide splash screen
   useEffect(() => {
+    if (!fontsLoaded) return;
+
     const colorSchemeValue = DatabaseManager.getSync('colorScheme');
     if (
       colorSchemeValue !== 'auto' &&
@@ -247,7 +250,7 @@ function App() {
     SystemNavigationBar.fullScreen(false);
     SystemNavigationBar.navigationShow();
     SplashScreen.hideAsync();
-  }, []);
+  }, [fontsLoaded]);
 
   useEffect(() => {
     SystemBars.setStyle(colorScheme === 'dark' ? 'light' : 'dark');
