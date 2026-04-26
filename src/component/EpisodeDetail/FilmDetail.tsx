@@ -17,7 +17,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { ActivityIndicator, Button, Surface, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Chip, Divider, Surface, useTheme } from 'react-native-paper';
 import Reanimated, {
   interpolate,
   useAnimatedRef,
@@ -118,7 +118,6 @@ function FilmDetail(props: Props) {
       };
     }
     if (!lastWatched.episode) return undefined;
-
     return {
       episodeNumber: lastWatched.episode,
       episodeTitle: '',
@@ -258,9 +257,11 @@ function FilmDetail(props: Props) {
       <ReanimatedFlashList
         ref={scrollRef}
         data={episodeList}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <RenderFilmItem
             item={item}
+            index={index}
+            totalEps={currentEpisodeList.length}
             data={data}
             lastWatched={lastWatched}
             handlePlayNow={handlePlayNow}
@@ -268,13 +269,14 @@ function FilmDetail(props: Props) {
             navigation={props.navigation}
           />
         )}
+        ItemSeparatorComponent={() => <Divider style={styles.chapterDivider} />}
         contentContainerStyle={{
           backgroundColor: styles.mainContainer.backgroundColor,
           paddingLeft: insets.left,
           paddingRight: insets.right,
           paddingBottom: insets.bottom + 20,
         }}
-        ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 12 }]}
+        ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 8 }]}
         ListHeaderComponent={listHeaderComponent}
         extraData={colorScheme}
         showsVerticalScrollIndicator={false}
@@ -322,142 +324,107 @@ const FilmDetailHeader = memo(
     navigation,
   }: FilmDetailHeaderProps) => {
     const styles = useStyles();
-    const globalStyles = useGlobalStyles();
     const theme = useTheme();
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     return (
       <View style={styles.mainContainer}>
-        <ImageLoading
-          style={[{ width: '100%', height: IMG_HEADER_HEIGHT }, headerImageStyle]}
-          source={{ uri: data.info.backgroundImage }}
-          resizeMode="cover"
-        />
+        {/* Hero Image */}
+        <Reanimated.View style={[{ width: '100%', height: IMG_HEADER_HEIGHT }, headerImageStyle]}>
+          <ImageLoading
+            source={{ uri: data.info.backgroundImage }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', isDark ? '#0c0c0c' : '#f5f5f5']}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+          />
+        </Reanimated.View>
 
-        <LinearGradient
-          colors={['transparent', 'black']}
-          style={{
-            width: '100%',
-            height: 80,
-            position: 'absolute',
-            transform: [
-              {
-                translateY: 165,
-              },
-            ],
-          }}
-        />
-
-        <View
-          style={[styles.mainContent, { backgroundColor: styles.mainContainer.backgroundColor }]}>
-          <View style={{ flexDirection: 'column', alignItems: 'center' }}>
+        {/* Main Content */}
+        <View style={styles.mainContent}>
+          {/* Poster + Info Row */}
+          <View style={styles.posterRow}>
             <ImageLoading
-              source={{
-                uri: 'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
-              }}
+              source={{ uri: 'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl }}
               style={styles.thumbnail}
               resizeMode="contain"
             />
-            <Surface
-              style={{
-                backgroundColor: colorScheme === 'dark' ? '#00608d' : '#5ddfff',
-                transform: styles.thumbnail.transform,
-                flexDirection: 'row',
-                gap: 5,
-                marginTop: 5,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 10,
-              }}>
-              <Text style={[globalStyles.text, styles.type]}>
-                {data.type === 'stream' ? 'Film' : 'Film/TV/Season'}
+            <View style={styles.infoContainer}>
+              <Text style={styles.title} numberOfLines={3}>
+                {data.info.title.trim()}
               </Text>
-            </Surface>
-          </View>
 
-          <View style={styles.infoContainer}>
-            <Text style={[globalStyles.text, styles.title]}>{data.info.title.trim()}</Text>
-            <View style={styles.genreContainer}>
-              {data.info.genres.map(genre => (
-                <Surface
-                  key={genre}
-                  elevation={3}
-                  style={{ borderRadius: styles.genre.borderRadius }}>
-                  <Text style={styles.genre}>{genre}</Text>
-                </Surface>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.secondaryInfoContainer}>
-            <View style={styles.additionalInfo}>
-              {Object.entries(data.info.additionalInfo)
-                .filter(a => Boolean(a[1]))
-                .map(([key, value]) => {
-                  return (
-                    <Surface elevation={2} key={key} style={styles.additionalInfoTextSurface}>
-                      <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                        <Icon color={styles.additionalInfoText.color} name="info-circle" /> {key}:{' '}
-                        {value}
-                      </Text>
-                    </Surface>
-                  );
-                })}
-              <Surface elevation={2} style={styles.additionalInfoTextSurface}>
-                <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                  <Icon color={styles.additionalInfoText.color} name="calendar" />{' '}
-                  {data.info.releaseDate}
-                </Text>
-              </Surface>
-              {!isEpisode(data) && data.subtitleLink === undefined && (
-                <Surface
-                  elevation={2}
-                  style={[
-                    styles.additionalInfoTextSurface,
-                    { backgroundColor: theme.colors.errorContainer },
-                  ]}>
-                  <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                    <Icon color={styles.additionalInfoText.color} name="info-circle" /> Subtitle
-                    tidak tersedia untuk film ini!
+              {/* Type Badge */}
+              <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: isDark ? '#00608d' : '#5ddfff' }]}>
+                  <Text style={styles.badgeText}>
+                    {data.type === 'stream' ? 'Film' : 'Series'}
                   </Text>
-                </Surface>
+                </View>
+              </View>
+
+              {/* Genres */}
+              <View style={styles.genreContainer}>
+                {data.info.genres.slice(0, 3).map(genre => (
+                  <Chip key={genre} compact style={styles.genreChip} textStyle={styles.genreText}>
+                    {genre}
+                  </Chip>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Info Pills */}
+          <View style={styles.infoPillRow}>
+            {Object.entries(data.info.additionalInfo)
+              .filter(([, v]) => Boolean(v))
+              .slice(0, 4)
+              .map(([key, value]) => (
+                <View key={key} style={styles.infoPill}>
+                  <Icon name="info-circle" size={11} color={theme.colors.primary} />
+                  <Text style={styles.infoPillText}>{key}: {value}</Text>
+                </View>
+              ))}
+            <View style={styles.infoPill}>
+              <Icon name="calendar" size={11} color={theme.colors.primary} />
+              <Text style={styles.infoPillText}>{data.info.releaseDate}</Text>
+            </View>
+            {!isEpisode(data) && data.subtitleLink === undefined && (
+              <View style={[styles.infoPill, { backgroundColor: theme.colors.errorContainer }]}>
+                <Icon name="exclamation-circle" size={11} color={theme.colors.error} />
+                <Text style={[styles.infoPillText, { color: theme.colors.error }]}>Tanpa Subtitle</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Synopsis */}
+          <View style={styles.synopsisContainer}>
+            <View style={styles.synopsisHeader}>
+              <Text style={styles.sectionTitle}>Sinopsis</Text>
+              {!(isSynopsisTranslationPending || translatedSynopsis !== null) && (
+                <Button icon="google-translate" mode="outlined" compact onPress={translateSynopsisToIndonesia}>
+                  Terjemahkan
+                </Button>
               )}
+              {isSynopsisTranslationPending && <ActivityIndicator size={16} />}
             </View>
+            <Text style={styles.synopsisText}>
+              {data.info.synopsis === ''
+                ? 'Tidak ada sinopsis yang tersedia.'
+                : (translatedSynopsis ?? data.info.synopsis)}
+            </Text>
+          </View>
 
-            <View style={[styles.synopsisContainer]}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                }}>
-                <Text style={[globalStyles.text, styles.synopsisTitle]}>Sinopsis</Text>
-                {!(isSynopsisTranslationPending || translatedSynopsis !== null) && (
-                  <Button
-                    icon="google-translate"
-                    mode="outlined"
-                    onPress={translateSynopsisToIndonesia}>
-                    Terjemahkan ke Bahasa Indonesia
-                  </Button>
-                )}
-                {isSynopsisTranslationPending && <ActivityIndicator />}
-              </View>
-              <View style={styles.synopsisView}>
-                <Text style={[globalStyles.text, styles.synopsisText]}>
-                  {data.info.synopsis === ''
-                    ? 'Tidak ada sinopsis yang tersedia.'
-                    : (translatedSynopsis ?? data.info.synopsis)}
-                </Text>
-              </View>
-            </View>
-
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
             {lastWatchedEpisodeData && lastWatched && (
               <Button
                 icon="play-circle"
                 mode="contained"
-                buttonColor={theme.colors.primary}
-                textColor={theme.colors.onPrimary}
+                style={styles.primaryButton}
                 onPress={() => {
                   if (!isEpisode(data)) {
                     setFilmStreamHistory(link, data, {
@@ -483,43 +450,41 @@ const FilmDetailHeader = memo(
                     },
                     type: 'film',
                   });
-                }}
-                style={{ borderColor: theme.colors.primary }}>
+                }}>
                 Lanjutkan:{' '}
                 {isEpisode(data)
                   ? lastWatchedEpisodeData.episodeNumber
                   : moment.utc((lastWatched.lastDuration ?? 0) * 1000).format('HH:mm:ss')}
               </Button>
             )}
-
             <Button
               icon="playlist-plus"
-              buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-              textColor={styles.additionalInfoText.color}
               mode="outlined"
+              style={styles.watchLaterButton}
+              disabled={isInList}
               onPress={() => {
                 const watchLaterJson: watchLaterJSON = {
                   title: data.info.title.trim(),
                   link: link,
                   rating: 'Film',
                   releaseYear: data.info.releaseDate,
-                  thumbnailUrl:
-                    'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
+                  thumbnailUrl: 'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
                   genre: data.info.genres,
                   date: Date.now(),
                   isMovie: true,
                 };
                 controlWatchLater('add', watchLaterJson);
                 ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
-              }}
-              disabled={isInList}>
-              {isInList ? 'Sudah Ditambahkan' : 'Tonton Nanti'}
+              }}>
+              {isInList ? 'Sudah di Tonton Nanti' : 'Tonton Nanti'}
             </Button>
           </View>
+
+          {/* Season Dropdown */}
           {isEpisode(data) && (
             <View style={styles.seasonContainer}>
-              <View style={styles.seasonHeader}>
-                <View style={styles.seasonIndicator} />
+              <View style={styles.episodeListHeader}>
+                <Text style={styles.sectionTitle}>Daftar Episode</Text>
                 <Dropdown
                   data={mappedSeasons}
                   value={selectedSeason}
@@ -554,6 +519,8 @@ const FilmDetailHeader = memo(
 
 interface RenderFilmItemProps {
   item: FilmEpisode;
+  index: number;
+  totalEps: number;
   data: ReturnType<typeof useCompatibleData>;
   lastWatched: HistoryJSON | undefined;
   handlePlayNow: () => void;
@@ -562,20 +529,19 @@ interface RenderFilmItemProps {
 }
 
 const RenderFilmItem = memo(
-  ({ item, data, lastWatched, handlePlayNow, navigation }: RenderFilmItemProps) => {
+  ({ item, index, totalEps, data, lastWatched, handlePlayNow, navigation }: RenderFilmItemProps) => {
     const styles = useStyles();
-    const globalStyles = useGlobalStyles();
+    const theme = useTheme();
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     if (!isEpisode(data)) {
       return (
-        <View style={styles.episodeListContainer}>
+        <View style={{ padding: 12 }}>
           <Button
             icon="movie-open-play"
-            buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-            textColor={styles.additionalInfoText.color}
-            mode="elevated"
-            style={{ flex: 1 }}
+            mode="contained"
+            style={{ borderRadius: 10 }}
             onPress={handlePlayNow}>
             Tonton Sekarang
           </Button>
@@ -593,52 +559,65 @@ const RenderFilmItem = memo(
       item.episodeNumber === episodeLastWatchedModified;
 
     return (
-      <View style={styles.episodeListContainer}>
-        <TouchableOpacity
-          style={[styles.episodeButton, isEpisodeLastWatched && styles.lastWatchedButton]}
-          onPress={() => {
-            navigation.navigate('FromUrl', {
-              title: data.info.title,
-              link: item.episodeUrl,
-              historyData: isEpisodeLastWatched
-                ? {
-                    lastDuration: lastWatched.lastDuration ?? 0,
-                    resolution: lastWatched.resolution ?? '',
-                  }
-                : undefined,
-              type: 'film',
-            });
-          }}>
-          <View style={styles.episodeMainContent}>
-            <View style={styles.episodeNumberBox}>
-              <Text style={styles.episodeNumberText}>{item.episodeNumber}</Text>
-            </View>
-            <View style={styles.episodeTitleWrapper}>
-              <Text
-                numberOfLines={1}
-                style={[
-                  globalStyles.text,
-                  styles.episodeText,
-                  isEpisodeLastWatched ? styles.lastWatchedTextColor : undefined,
-                ]}>
-                {item.episodeTitle}
-              </Text>
-              {isEpisodeLastWatched && <Text style={styles.watchingNowTag}>Terakhir Ditonton</Text>}
-            </View>
-            <Icon
-              name={isEpisodeLastWatched ? 'history' : 'play-circle'}
-              size={20}
-              color={
-                isEpisodeLastWatched
-                  ? styles.lastWatchedTextColor.color
-                  : colorScheme === 'dark'
-                    ? '#5ddfff'
-                    : '#00608d'
-              }
-            />
-          </View>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={[styles.episodeButton, isEpisodeLastWatched && styles.lastWatchedButton]}
+        onPress={() => {
+          navigation.navigate('FromUrl', {
+            title: data.info.title,
+            link: item.episodeUrl,
+            historyData: isEpisodeLastWatched
+              ? {
+                  lastDuration: lastWatched.lastDuration ?? 0,
+                  resolution: lastWatched.resolution ?? '',
+                }
+              : undefined,
+            type: 'film',
+          });
+        }}>
+
+        {/* Episode Number Badge */}
+        <View style={[
+          styles.epNumberBadge,
+          isEpisodeLastWatched && { backgroundColor: theme.colors.primary }
+        ]}>
+          <Text style={[
+            styles.epNumberText,
+            isEpisodeLastWatched && { color: '#fff' }
+          ]}>
+            {item.episodeNumber || String(index + 1)}
+          </Text>
+        </View>
+
+        {/* Episode Info */}
+        <View style={styles.episodeTitleWrapper}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.episodeText,
+              isEpisodeLastWatched && { color: theme.colors.primary },
+            ]}>
+            {item.episodeTitle || `Episode ${item.episodeNumber}`}
+          </Text>
+          {item.releaseDate ? (
+            <Text style={styles.episodeDate}>{item.releaseDate}</Text>
+          ) : null}
+          {isEpisodeLastWatched && (
+            <Text style={styles.lastWatchedTag}>● Terakhir Ditonton</Text>
+          )}
+        </View>
+
+        {/* Play Button */}
+        <View style={[
+          styles.playButton,
+          isEpisodeLastWatched && { backgroundColor: theme.colors.primaryContainer }
+        ]}>
+          <Icon
+            name={isEpisodeLastWatched ? 'history' : 'play'}
+            size={13}
+            color={isEpisodeLastWatched ? theme.colors.primary : isDark ? '#aaa' : '#666'}
+          />
+        </View>
+      </TouchableOpacity>
     );
   },
 );
@@ -648,216 +627,232 @@ function useStyles() {
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
   const dimensions = useWindowDimensions();
+  const isDark = colorScheme === 'dark';
+
   return useMemo(
     () =>
       StyleSheet.create({
         mainContainer: {
           flex: 1,
-          backgroundColor: colorScheme === 'dark' ? '#0c0c0c' : '#f5f5f5',
+          backgroundColor: isDark ? '#0c0c0c' : '#f5f5f5',
         },
         mainContent: {
-          gap: 15,
-          flex: 1,
-          flexWrap: 'wrap',
-          flexDirection: 'row',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          paddingHorizontal: 20,
-          paddingVertical: 15,
-          marginTop: -20,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          gap: 16,
         },
-        infoContainer: {
-          gap: 5,
-          flex: 1,
-          flexDirection: 'column',
+        posterRow: {
+          flexDirection: 'row',
+          gap: 14,
+          marginTop: -60,
         },
         thumbnail: {
-          margin: 15,
-          width: dimensions.width * 0.3,
+          width: dimensions.width * 0.28,
           height: 150,
-          borderRadius: 10,
-          transform: [{ translateY: -40 }],
+          borderRadius: 12,
+          elevation: 6,
         },
-        type: {
-          color: colorScheme === 'dark' ? 'white' : 'black',
-          fontWeight: 'bold',
+        infoContainer: {
+          flex: 1,
+          gap: 6,
+          paddingTop: 8,
         },
         title: {
-          flexShrink: 1,
-          fontSize: 22,
+          fontSize: 18,
           fontWeight: 'bold',
           color: globalStyles.text.color,
+          lineHeight: 24,
         },
-        secondaryInfoContainer: {
-          width: '100%',
-          gap: 15,
+        badgeRow: {
+          flexDirection: 'row',
+          gap: 6,
+        },
+        badge: {
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          borderRadius: 6,
+        },
+        badgeText: {
+          fontSize: 11,
+          fontWeight: 'bold',
+          color: isDark ? 'white' : 'black',
         },
         genreContainer: {
           flexDirection: 'row',
           flexWrap: 'wrap',
-          gap: 8,
-          marginTop: 10,
+          gap: 4,
         },
-        genre: {
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
-          borderRadius: 8,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
+        genreChip: {
+          backgroundColor: theme.colors.secondaryContainer,
+          height: 26,
         },
-        additionalInfo: {
+        genreText: {
+          fontSize: 10,
+          color: theme.colors.onSecondaryContainer,
+        },
+        infoPillRow: {
           flexDirection: 'row',
           flexWrap: 'wrap',
           gap: 8,
-          justifyContent: 'flex-start',
+        },
+        infoPill: {
+          flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 8,
-        },
-        additionalInfoTextSurface: {
-          borderRadius: 12,
-          paddingHorizontal: 12,
-          paddingVertical: 6,
+          gap: 4,
           backgroundColor: theme.colors.secondaryContainer,
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 20,
         },
-        additionalInfoText: {
-          color: theme.colors.onSecondaryContainer,
-          fontWeight: '600',
-          fontSize: 12,
-        },
-        synopsisContainer: {},
-        synopsisTitle: {
-          fontSize: 18,
+        infoPillText: {
+          fontSize: 11,
           fontWeight: 'bold',
-          marginBottom: 8,
-          color: globalStyles.text.color,
+          color: theme.colors.onSecondaryContainer,
         },
-        synopsisView: {
-          paddingBottom: 10,
+        synopsisContainer: {
+          gap: 8,
+        },
+        synopsisHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        },
+        sectionTitle: {
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: globalStyles.text.color,
         },
         synopsisText: {
-          textAlign: 'justify',
           fontSize: 14,
-          lineHeight: 20,
-          color: globalStyles.text.color,
-          opacity: 0.9,
+          lineHeight: 22,
+          color: isDark ? '#ccc' : '#555',
+          textAlign: 'justify',
         },
-        // --- DROPDOWN STYLES ---
+        actionButtons: {
+          gap: 10,
+        },
+        primaryButton: {
+          borderRadius: 10,
+        },
+        watchLaterButton: {
+          borderRadius: 10,
+        },
+        seasonContainer: {
+          width: '100%',
+        },
+        episodeListHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingBottom: 4,
+        },
+        // Dropdown styles
         dropdownStyle: {
           backgroundColor: theme.colors.elevation.level2,
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          minWidth: dimensions.width * 0.4,
-          borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          minWidth: dimensions.width * 0.38,
+          borderRadius: 10,
           borderWidth: 1,
-          borderColor: theme.colors.outlineVariant || (colorScheme === 'dark' ? '#444' : '#E0E0E0'),
+          borderColor: theme.colors.outlineVariant || (isDark ? '#444' : '#E0E0E0'),
         },
         dropdownContainerStyle: {
           borderRadius: 12,
           backgroundColor: theme.colors.elevation.level3,
           borderWidth: 1,
-          borderColor: theme.colors.outlineVariant || (colorScheme === 'dark' ? '#444' : '#E0E0E0'),
+          borderColor: theme.colors.outlineVariant || (isDark ? '#444' : '#E0E0E0'),
           overflow: 'hidden',
           elevation: 6,
         },
         dropdownItemTextStyle: {
           color: theme.colors.onSurface,
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: '500',
         },
         dropdownItemContainerStyle: {
-          // paddingVertical: 10,
           paddingHorizontal: 12,
           borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor:
-            theme.colors.outlineVariant || (colorScheme === 'dark' ? '#333' : '#E0E0E0'),
+          borderBottomColor: theme.colors.outlineVariant || (isDark ? '#333' : '#E0E0E0'),
         },
         dropdownSelectedTextStyle: {
           color: theme.colors.primary,
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: 'bold',
         },
         dropdownPlaceholderStyle: {
           color: globalStyles.text.color,
-          fontSize: 15,
+          fontSize: 14,
           opacity: 0.7,
         },
         dropdownIconStyle: {
           tintColor: theme.colors.onSurface,
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
         },
-        seasonContainer: {
-          width: '100%',
-        },
-        seasonHeader: {
+        // Episode item styles - matching AniDetail
+        episodeButton: {
           flexDirection: 'row',
           alignItems: 'center',
-          marginBottom: 12,
-        },
-        seasonIndicator: {
-          width: 4,
-          height: 20,
-          backgroundColor: colorScheme === 'dark' ? '#5ddfff' : '#00608d',
-          borderRadius: 2,
-          marginRight: 10,
-        },
-        episodeListContainer: {
-          margin: 5,
-        },
-        episodeButton: {
-          backgroundColor: colorScheme === 'dark' ? '#1e1e1e' : '#ffffff',
-          borderRadius: 12,
-          padding: 12,
-          elevation: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+          gap: 12,
         },
         lastWatchedButton: {
-          backgroundColor: theme.colors.secondaryContainer,
-          borderWidth: 1,
-          borderColor: theme.colors.secondary,
+          backgroundColor: isDark ? '#1a2a1a' : '#f0fff0',
         },
-        episodeMainContent: {
-          flexDirection: 'row',
-          alignItems: 'center',
-        },
-        episodeNumberBox: {
-          height: 35,
-          minWidth: 40,
-          paddingHorizontal: 8,
-          backgroundColor: colorScheme === 'dark' ? '#333' : '#f0f0f0',
+        epNumberBadge: {
+          width: 36,
+          height: 36,
           borderRadius: 8,
+          backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
           justifyContent: 'center',
           alignItems: 'center',
-          marginRight: 12,
         },
-        episodeNumberText: {
-          fontSize: 14,
+        epNumberText: {
+          fontSize: 12,
           fontWeight: 'bold',
-          color: colorScheme === 'dark' ? '#fff' : '#333',
+          color: isDark ? '#ccc' : '#555',
         },
         episodeTitleWrapper: {
           flex: 1,
-          justifyContent: 'center',
         },
         episodeText: {
-          fontSize: 15,
+          fontSize: 13,
           fontWeight: '600',
-          color: colorScheme === 'dark' ? '#ffffff' : '#333333',
+          color: isDark ? '#e0e0e0' : '#333',
         },
-        watchingNowTag: {
+        episodeDate: {
+          fontSize: 11,
+          color: isDark ? '#666' : '#aaa',
+          marginTop: 2,
+        },
+        lastWatchedTag: {
           fontSize: 10,
           fontWeight: 'bold',
           color: theme.colors.primary,
           marginTop: 2,
         },
-        lastWatchedTextColor: {
-          color: theme.colors.onPrimaryContainer,
+        playButton: {
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        chapterDivider: {
+          backgroundColor: isDark ? '#2b2b2b' : '#e0e0e0',
+          height: 0.8,
         },
       }),
-    [colorScheme, dimensions.width, globalStyles.text.color, theme.colors],
+    [
+      isDark,
+      colorScheme,
+      dimensions.width,
+      globalStyles.text.color,
+      theme.colors,
+    ],
   );
 }
 
