@@ -9,7 +9,7 @@
     }
   },
   "updates": {
-    "checkAutomatically": "NEVER",
+    "checkAutomatically": "ON_LOAD",
     "url": "https://u.expo.dev/6492eb54-5fe6-4a6e-b84d-9df5d43ef2ea"
   },
   "android": {
