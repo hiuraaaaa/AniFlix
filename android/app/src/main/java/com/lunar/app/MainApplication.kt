@@ -1,4 +1,6 @@
-package com.pirles.anime
+package com.lunar.app
+
+import com.lunar.app.BuildConfig
 import android.content.res.Configuration
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
