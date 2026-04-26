@@ -5,12 +5,12 @@
   "icon": "./assets/icon.png",
   "extra": {
     "eas": {
-      "projectId": "a8fab8df-a6fc-4724-b527-fc05c98c90cc"
+      "projectId": "6492eb54-5fe6-4a6e-b84d-9df5d43ef2ea"
     }
   },
   "updates": {
     "checkAutomatically": "NEVER",
-    "url": "https://u.expo.dev/a8fab8df-a6fc-4724-b527-fc05c98c90cc"
+    "url": "https://u.expo.dev/6492eb54-5fe6-4a6e-b84d-9df5d43ef2ea"
   },
   "android": {
     "package": "com.lunar.app",
