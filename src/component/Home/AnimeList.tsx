@@ -696,6 +696,7 @@ function useStyles() {
           paddingHorizontal: 16,
           paddingTop: 12,
           paddingBottom: 8,
+          alignItems: 'flex-start',
         },
         headerTitle: {
           fontSize: 32,
