@@ -41,12 +41,11 @@ import { ComicsSearch, comicsSearch } from '@utils/scrapers/comicsv2';
 import { SearchResult, searchFilm } from '@utils/scrapers/film';
 import { __ALIAS as KomikuAlias, KomikuSearch, komikuSearch } from '@utils/scrapers/komiku';
 import { RenderScrollComponent } from './AnimeList';
+
 type SectionHeader = { type: 'header'; title: string };
 type ComicItem = (ComicsSearch | KomikuSearch) & { source?: string };
 type ComicsComboSearch = ComicItem | SectionHeader;
-
 type AnySearchItem = Movies | SearchAnimeResult | ComicsComboSearch | SearchResult[number];
-
 type SearchRowItem = Exclude<AnySearchItem, SectionHeader>;
 
 const TouchableOpacityAnimated = Reanimated.createAnimatedComponent(TouchableOpacity);
@@ -61,24 +60,20 @@ function Search(props: Props) {
   const [isPending, startTransition] = useTransition();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const styles = useStyles();
   const theme = useTheme();
 
   const [searchType, setSearchType] = useState<'anime' | 'comics' | 'film'>('anime');
   const [searchedSearchType, setSearchedSearchType] = useState(searchType);
   const textInputRef = useRef<TextInputType>(null);
-
   const isFocus = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
-      const timeout = setTimeout(() => {
-        isFocus.current = true;
-      }, 200);
+      const timeout = setTimeout(() => { isFocus.current = true; }, 200);
       const keyboardEvent = Keyboard.addListener('keyboardDidHide', () => {
-        if (textInputRef.current) {
-          textInputRef.current.blur();
-        }
+        textInputRef.current?.blur();
       });
       return () => {
         isFocus.current = false;
@@ -89,7 +84,7 @@ function Search(props: Props) {
     }, []),
   );
 
-  const [searchText, setSearchText] = useState<string>('');
+  const [searchText, setSearchText] = useState('');
   const [listAnime, setListAnime] = useState<listAnimeTypeList[] | null>(null);
   const [listAnimeLoading, setListAnimeLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -98,7 +93,7 @@ function Search(props: Props) {
   const [filmData, setFilmData] = useState<null | SearchResult>(null);
   const [comicsData, setComicsData] = useState<null | ComicsComboSearch[]>(null);
   const [loading, setLoading] = useState(false);
-  const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
+  const [currentSearchQuery, setCurrentSearchQuery] = useState('');
   const [showSearchHistory, setShowSearchHistory] = useState(false);
 
   useFocusEffect(
@@ -127,34 +122,23 @@ function Search(props: Props) {
     setListAnimeLoading(true);
     setIsError(false);
     setListAnime([]);
-
     AnimeAPI.listAnime(undefined, animeData => {
-      startTransition(() => {
-        setListAnime(animeData);
-      });
+      startTransition(() => setListAnime(animeData));
     })
-      .then(animeData => {
-        setListAnime(animeData);
-      })
+      .then(animeData => setListAnime(animeData))
       .catch(() => {
         setListAnime(null);
         setIsError(true);
         ToastAndroid.show('Gagal memuat daftar anime', ToastAndroid.SHORT);
       })
-      .finally(() => {
-        setListAnimeLoading(false);
-      });
+      .finally(() => setListAnimeLoading(false));
   }, []);
 
-  const onChangeText = useCallback((text: string) => {
-    setSearchText(text);
-  }, []);
+  const onChangeText = useCallback((text: string) => setSearchText(text), []);
 
   const submit = useCallback(() => {
     const handleError = (err: Error) => {
-      if (err.message.includes('Aborted') || err.message.includes('canceled')) {
-        return;
-      }
+      if (err.message.includes('Aborted') || err.message.includes('canceled')) return;
       if (err.message === 'Silahkan selesaikan captcha') {
         return ToastAndroid.show('Silahkan selesaikan captcha', ToastAndroid.SHORT);
       }
@@ -164,13 +148,20 @@ function Search(props: Props) {
           : 'Error tidak diketahui: ' + err.message;
       DialogManager.alert('Error', errMessage);
     };
-    if (searchText.trim() === '') {
-      return;
-    }
+
+    if (searchText.trim() === '') return;
 
     setShowSearchHistory(false);
     setLoading(true);
     textInputRef.current?.blur();
+
+    const saveHistory = () => {
+      if (searchHistory.includes(searchText.trim())) {
+        searchHistory.splice(searchHistory.indexOf(searchText.trim()), 1);
+      }
+      searchHistory.unshift(searchText.trim());
+      DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+    };
 
     if (searchType === 'anime') {
       Promise.all([
@@ -181,18 +172,12 @@ function Search(props: Props) {
           setCurrentSearchQuery(searchText);
           setFilmData(null);
           setComicsData(null);
-          if (!('isError' in movieResult)) {
-            setMovieData(movieResult);
-          }
+          if (!('isError' in movieResult)) setMovieData(movieResult);
           setData(animeResult);
         })
         .finally(() => {
           setSearchedSearchType(searchType);
-          if (searchHistory.includes(searchText.trim())) {
-            searchHistory.splice(searchHistory.indexOf(searchText.trim()), 1);
-          }
-          searchHistory.unshift(searchText.trim());
-          DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+          saveHistory();
           setLoading(false);
         })
         .catch(handleError);
@@ -207,11 +192,7 @@ function Search(props: Props) {
         .catch(handleError)
         .finally(() => {
           setSearchedSearchType(searchType);
-          if (searchHistory.includes(searchText.trim())) {
-            searchHistory.splice(searchHistory.indexOf(searchText.trim()), 1);
-          }
-          searchHistory.unshift(searchText.trim());
-          DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+          saveHistory();
           setCurrentSearchQuery(searchText.trim());
           setLoading(false);
         });
@@ -222,14 +203,10 @@ function Search(props: Props) {
       ])
         .then(([comicsResponse, komikuResponse]) => {
           if (comicsResponse.status === 'rejected' && komikuResponse.status === 'rejected') {
-            if (abortController.current?.signal.aborted) {
-              throw new Error(comicsResponse.reason);
-            }
             throw new Error(comicsResponse.reason);
           }
           const comicsResult = comicsResponse.status === 'fulfilled' ? comicsResponse.value : [];
           const komikuResult = komikuResponse.status === 'fulfilled' ? komikuResponse.value : [];
-
           setData(null);
           setMovieData(null);
           setFilmData(null);
@@ -238,32 +215,23 @@ function Search(props: Props) {
             ...comicsResult,
             ...komikuResult.map(res => ({ ...res, source: KomikuAlias })),
           ];
-
           const grouped: { [key: string]: ComicItem[] } = {};
           allItems.forEach(item => {
             const src = item.source || 'Lainnya';
-            if (!grouped[src]) {
-              grouped[src] = [];
-            }
+            if (!grouped[src]) grouped[src] = [];
             grouped[src].push(item);
           });
-
           const sectionedData: ComicsComboSearch[] = [];
           Object.keys(grouped).forEach(key => {
             sectionedData.push({ type: 'header', title: key });
             sectionedData.push(...grouped[key]);
           });
-
           setComicsData(sectionedData);
         })
         .catch(handleError)
         .finally(() => {
           setSearchedSearchType(searchType);
-          if (searchHistory.includes(searchText.trim())) {
-            searchHistory.splice(searchHistory.indexOf(searchText.trim()), 1);
-          }
-          searchHistory.unshift(searchText.trim());
-          DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+          saveHistory();
           setCurrentSearchQuery(searchText.trim());
           setLoading(false);
         });
@@ -271,34 +239,30 @@ function Search(props: Props) {
   }, [searchHistory, searchText, searchType]);
 
   function renderSearchHistory({ item, index }: ListRenderItemInfo<string>) {
-    const onSelectHistory = (text: string) => {
-      onChangeText(text);
-    };
-    return <HistoryList index={index} item={item} onChangeTextFunction={onSelectHistory} />;
+    return (
+      <HistoryList
+        index={index}
+        item={item}
+        onChangeTextFunction={onChangeText}
+      />
+    );
   }
 
   const listAnimeRenderer = useCallback(
-    ({ index, item }: ListRenderItemInfo<listAnimeTypeList>) => {
-      return (
-        <TouchableOpacity
-          onPress={() => {
-            props.navigation.dispatch(
-              StackActions.push('FromUrl', {
-                title: item.title,
-                link: item.streamingLink,
-              }),
-            );
-          }}
-          style={styles.animeList}>
-          <Text style={[globalStyles.text, styles.animeListIndex]}>{index + 1}.</Text>
-          <Text
-            numberOfLines={1}
-            style={[globalStyles.text, { textAlign: 'center', flex: 1, fontWeight: 'bold' }]}>
-            {item?.title}
-          </Text>
-        </TouchableOpacity>
-      );
-    },
+    ({ index, item }: ListRenderItemInfo<listAnimeTypeList>) => (
+      <TouchableOpacity
+        onPress={() => {
+          props.navigation.dispatch(
+            StackActions.push('FromUrl', { title: item.title, link: item.streamingLink }),
+          );
+        }}
+        style={styles.animeList}>
+        <Text style={[globalStyles.text, styles.animeListIndex]}>{index + 1}.</Text>
+        <Text numberOfLines={1} style={[globalStyles.text, styles.animeListTitle]}>
+          {item?.title}
+        </Text>
+      </TouchableOpacity>
+    ),
     [globalStyles.text, props.navigation, styles],
   );
 
@@ -337,13 +301,9 @@ function Search(props: Props) {
   ];
 
   return (
-    <View style={[{ flex: 1 }]}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          width: '100%',
-        }}>
+    <View style={{ flex: 1 }}>
+      {/* Search Bar Row */}
+      <View style={styles.searchBarRow}>
         {showSearchHistory && (
           <TouchableOpacityReactNative
             hitSlop={15}
@@ -351,72 +311,55 @@ function Search(props: Props) {
               setShowSearchHistory(false);
               textInputRef.current?.blur();
             }}
-            style={{ paddingHorizontal: 10 }}>
-            <Icon name="angle-left" size={30} color={theme.colors.primary} />
+            style={styles.backButton}>
+            <Icon name="angle-left" size={26} color={theme.colors.primary} />
           </TouchableOpacityReactNative>
         )}
-        <Reanimated.View layout={LinearTransition.springify()} style={{ flex: 1, height: 60 }}>
+        <Reanimated.View layout={LinearTransition.springify()} style={{ flex: 1 }}>
           <Searchbar
             onSubmitEditing={submit}
             onIconPress={submit}
             onChangeText={onChangeText}
             onFocus={onTextInputFocus}
-            placeholder="Cari disini"
+            placeholder="Cari disini..."
             value={searchText}
             autoCorrect={false}
             ref={textInputRef}
+            style={styles.searchBar}
+            inputStyle={{ fontSize: 14 }}
           />
         </Reanimated.View>
       </View>
 
+      {/* Segment */}
       <SegmentedButtons
-        style={{ marginTop: 6 }}
+        style={styles.segmentedButtons}
         value={searchType}
         onValueChange={setSearchType}
         buttons={[
-          {
-            value: 'anime',
-            label: 'Cari anime/movie',
-            icon: 'movie-search',
-          },
-          {
-            value: 'comics',
-            label: 'Cari komik',
-            icon: 'book-search',
-          },
-          {
-            value: 'film',
-            label: 'Cari film',
-            icon: 'movie',
-          },
+          { value: 'anime', label: 'Anime', icon: 'movie-search' },
+          { value: 'comics', label: 'Komik', icon: 'book-search' },
+          { value: 'film', label: 'Film', icon: 'movie' },
         ]}
       />
 
+      {/* Loading indicator */}
       {isLoading && (
-        <View
-          style={[
-            styles.center,
-            {
-              flex: 0,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 10,
-            },
-          ]}>
+        <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={[globalStyles.text, { opacity: 0.8 }]}>Sedang mengambil data...</Text>
+          <Text style={[globalStyles.text, styles.loadingText]}>Sedang mengambil data...</Text>
         </View>
       )}
 
+      {/* Empty state / manual load */}
       {shouldShowManualLoad && (
         <Reanimated.View entering={FadeInUp} style={styles.center}>
           <View style={styles.emptyStateContainer}>
             <Icon
               name={isError ? 'warning' : 'list-alt'}
-              size={60}
+              size={56}
               color={isError ? theme.colors.error : theme.colors.outline}
-              style={{ marginBottom: 15 }}
+              style={{ marginBottom: 12 }}
             />
             <Text style={[globalStyles.text, styles.emptyStateTitle]}>
               {isError ? 'Gagal Memuat Data' : 'Jelajahi Anime'}
@@ -426,7 +369,6 @@ function Search(props: Props) {
                 ? 'Terjadi kesalahan koneksi. Silahkan coba lagi.'
                 : 'Tekan tombol di bawah untuk melihat daftar anime terbaru.'}
             </Text>
-
             <TouchableOpacityReactNative
               onPress={loadAnimeList}
               activeOpacity={0.7}
@@ -440,12 +382,11 @@ function Search(props: Props) {
               ]}>
               <Icon
                 name={isError ? 'refresh' : 'cloud-download'}
-                size={18}
+                size={16}
                 color={isError ? theme.colors.onErrorContainer : theme.colors.onPrimaryContainer}
               />
               <Text
                 style={[
-                  globalStyles.text,
                   styles.loadButtonText,
                   {
                     color: isError
@@ -460,62 +401,54 @@ function Search(props: Props) {
         </Reanimated.View>
       )}
 
+      {/* Default anime list */}
       {showDefaultList && (
         <View style={{ flex: 1 }}>
-          <Text
-            style={[globalStyles.text, { textAlign: 'center', marginTop: 10, fontWeight: 'bold' }]}>
+          <Text style={[globalStyles.text, styles.totalAnimeText]}>
             Total anime: {listAnime?.length} (belum termasuk movie)
           </Text>
-
           <FlashList
             data={listAnime}
             renderItem={listAnimeRenderer}
             ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
             keyExtractor={item => item.title}
             extraData={styles}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 20, paddingTop: 4 }}
           />
         </View>
       )}
 
+      {/* Search results */}
       {(hasSearchResults || isSearchEmpty) && (
         <>
-          <Text
-            style={[
-              globalStyles.text,
-              { fontWeight: 'bold', fontSize: 13, marginVertical: 2, textAlign: 'center' },
-            ]}>
-            {isSearchEmpty
-              ? 'Tidak ada hasil pencarian yang ditemukan!'
-              : `Hasil pencarian untuk: ${currentSearchQuery}`}
-
-            {!isSearchEmpty &&
-              movieData &&
-              movieData.length > 0 &&
-              (data?.result?.length ?? 0) > 0 &&
-              '\n(Movie di tempatkan di urutan atas)'}
-          </Text>
+          <View style={styles.resultHeaderRow}>
+            <Icon
+              name={isSearchEmpty ? 'search-minus' : 'search'}
+              size={13}
+              color={isSearchEmpty ? theme.colors.error : theme.colors.primary}
+            />
+            <Text style={[globalStyles.text, styles.resultHeaderText]}>
+              {isSearchEmpty
+                ? 'Tidak ada hasil untuk pencarian ini'
+                : `Hasil: "${currentSearchQuery}"`}
+            </Text>
+            {!isSearchEmpty && movieData && movieData.length > 0 && (data?.result?.length ?? 0) > 0 && (
+              <Text style={styles.movieNoteText}> · Movie di urutan atas</Text>
+            )}
+          </View>
 
           {isSearchEmpty && (
             <Reanimated.View entering={FadeInUp} style={styles.center}>
               <View style={styles.emptyStateContainer}>
-                <Icon
-                  name="search-minus"
-                  size={60}
-                  color={theme.colors.outline}
-                  style={{ marginBottom: 15 }}
-                />
-                <Text style={[globalStyles.text, styles.emptyStateTitle]}>
-                  Hasil tidak ditemukan
-                </Text>
+                <Icon name="search-minus" size={56} color={theme.colors.outline} style={{ marginBottom: 12 }} />
+                <Text style={[globalStyles.text, styles.emptyStateTitle]}>Hasil tidak ditemukan</Text>
                 <Text style={[globalStyles.text, styles.emptyStateSubtitle]}>
-                  Coba periksa kembali kata kunci pencarianmu atau gunakan kata kunci lain yang
-                  lebih umum.
+                  Coba periksa kembali kata kunci atau gunakan kata yang lebih umum.
                 </Text>
-                <View style={{ alignItems: 'flex-start' }}>
+                <View style={{ alignItems: 'flex-start', width: '100%' }}>
                   {proTips[searchedSearchType].map(proTip => (
                     <Text style={[globalStyles.text, styles.proTip]} key={proTip}>
-                      <Icon name="lightbulb-o" size={12} color={theme.colors.primary} /> {proTip}
+                      <Icon name="lightbulb-o" size={11} color={theme.colors.primary} /> {proTip}
                     </Text>
                   ))}
                 </View>
@@ -526,27 +459,25 @@ function Search(props: Props) {
           {hasSearchResults && (
             <FlashList
               renderScrollComponent={RenderScrollComponent}
-              ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
               data={flashListData}
               getItemType={item => {
-                if ('type' in item && item.type === 'header') {
-                  return 'sectionHeader';
-                }
+                if ('type' in item && item.type === 'header') return 'sectionHeader';
                 return 'row';
               }}
               keyExtractor={(item, index) => {
-                if ('type' in item && item.type === 'header') {
-                  return `header-${item.title}-${index}`;
-                }
+                if ('type' in item && item.type === 'header') return `header-${item.title}-${index}`;
                 return String(index);
               }}
               renderItem={({ item: z }) => <SearchList item={z} parentProps={props} />}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: 10, paddingTop: 4 }}
+              estimatedItemSize={150}
             />
           )}
         </>
       )}
 
+      {/* Search History overlay */}
       {showSearchHistory && (
         <Reanimated_KeyboardAvoidingView
           behavior="height"
@@ -558,21 +489,9 @@ function Search(props: Props) {
               value={searchType}
               onValueChange={setSearchType}
               buttons={[
-                {
-                  value: 'anime',
-                  label: 'Cari anime/movie',
-                  icon: 'movie-search',
-                },
-                {
-                  value: 'comics',
-                  label: 'Cari komik',
-                  icon: 'book-search',
-                },
-                {
-                  value: 'film',
-                  label: 'Cari film',
-                  icon: 'movie',
-                },
+                { value: 'anime', label: 'Anime', icon: 'movie-search' },
+                { value: 'comics', label: 'Komik', icon: 'book-search' },
+                { value: 'film', label: 'Film', icon: 'movie' },
               ]}
             />
             <FlashList
@@ -584,23 +503,13 @@ function Search(props: Props) {
               extraData={styles}
               renderItem={renderSearchHistory}
               ItemSeparatorComponent={() => (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    borderBottomWidth: 0.5,
-                    borderColor: colorScheme === 'dark' ? 'gray' : 'black',
-                    width: '100%',
-                  }}
-                />
+                <View style={styles.historyDivider} />
               )}
               ListHeaderComponent={() => (
                 <View style={styles.searchHistoryHeader}>
-                  <Text
-                    style={[
-                      globalStyles.text,
-                      { fontWeight: 'bold', flex: 1, textAlign: 'center', marginRight: 25 },
-                    ]}>
-                    Riwayat Pencarian: {searchHistory.length}
+                  <Icon name="history" size={14} color={useTheme().colors.primary} />
+                  <Text style={[globalStyles.text, styles.historyHeaderText]}>
+                    Riwayat Pencarian ({searchHistory.length})
                   </Text>
                 </View>
               )}
@@ -608,6 +517,8 @@ function Search(props: Props) {
           </View>
         </Reanimated_KeyboardAvoidingView>
       )}
+
+      {/* Close search result button */}
       {(data !== null || comicsData !== null || filmData !== null) && !loading && (
         <TouchableOpacityAnimated
           style={styles.closeSearchResult}
@@ -619,15 +530,14 @@ function Search(props: Props) {
           }}
           entering={ZoomIn}
           exiting={ZoomOut}>
-          <Icon name="times" size={30} style={{ alignSelf: 'center' }} color="#dadada" />
+          <Icon name="times" size={20} color="#fff" />
         </TouchableOpacityAnimated>
       )}
+
       <Snackbar
-        style={{ zIndex: 2, position: 'absolute', bottom: 0, alignSelf: 'center' }}
+        style={styles.snackbar}
         visible={loading}
-        onDismiss={() => {
-          setLoading(false);
-        }}
+        onDismiss={() => setLoading(false)}
         action={{
           label: 'Batal',
           onPress: () => {
@@ -654,43 +564,30 @@ function HistoryList({
   const theme = useTheme();
   const globalStyles = useGlobalStyles();
   const styles = useStyles();
+
   return (
     <View
       style={styles.searchHistoryItemContainer}
       pointerEvents="box-none"
       onStartShouldSetResponder={() => true}>
       <TouchableOpacityReactNative
-        style={[
-          {
-            padding: 6,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            minHeight: 40,
-          },
-        ]}
-        onPress={() => {
-          onChangeTextFunction(item);
-        }}>
-        <View
-          style={{ justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'row' }}>
-          <Icon name="history" size={20} color={theme.colors.tertiary} />
-          <Text style={[globalStyles.text, { fontWeight: 'bold', flex: 1, textAlign: 'center' }]}>
-            {item}
-          </Text>
-        </View>
+        style={styles.historyItem}
+        onPress={() => onChangeTextFunction(item)}>
+        <Icon name="history" size={15} color={theme.colors.tertiary} style={{ marginRight: 8 }} />
+        <Text style={[globalStyles.text, { flex: 1, fontWeight: '500' }]}>{item}</Text>
         <TouchableOpacityReactNative
           hitSlop={14}
           onPress={async () => {
             DatabaseManager.set(
               'searchHistory',
               JSON.stringify(
-                (
-                  JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]') as string[]
-                ).filter((_, i) => i !== index),
+                (JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]') as string[]).filter(
+                  (_, i) => i !== index,
+                ),
               ),
             );
           }}>
-          <Icon name="times" size={25} color="#ff0f0f" />
+          <Icon name="times-circle" size={18} color="#ff4444" />
         </TouchableOpacityReactNative>
       </TouchableOpacityReactNative>
     </View>
@@ -709,37 +606,41 @@ function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; pare
       <View style={styles.sectionHeaderContainer}>
         <View style={styles.sectionHeaderLine} />
         <Text style={[globalStyles.text, styles.sectionHeaderText]}>
-          <Icon name="globe" size={14} color={theme.colors.secondary} /> {z.title.toUpperCase()}
+          <Icon name="globe" size={13} color={theme.colors.secondary} /> {z.title.toUpperCase()}
         </Text>
         <View style={styles.sectionHeaderLine} />
       </View>
     );
   }
+
   const item = z as SearchRowItem;
 
-  const isMovie = (data: SearchRowItem): data is Movies => {
-    return !('animeUrl' in data) && !('detailUrl' in data) && !('synopsis' in data);
-  };
+  const isMovie = (data: SearchRowItem): data is Movies =>
+    !('animeUrl' in data) && !('detailUrl' in data) && !('synopsis' in data);
+  const isComic = (data: SearchRowItem): data is ComicItem => 'additionalInfo' in data;
+  const isAnime = (data: SearchRowItem): data is SearchAnimeResult => 'animeUrl' in data;
+  const isFilm = (data: SearchRowItem): data is SearchResult[number] => 'synopsis' in data;
 
-  const isComic = (data: SearchRowItem): data is ComicItem => {
-    return 'additionalInfo' in data;
-  };
-
-  const isAnime = (data: SearchRowItem): data is SearchAnimeResult => {
-    return 'animeUrl' in data;
-  };
-
-  const isFilm = (data: SearchRowItem): data is SearchResult[number] => {
-    return 'synopsis' in data;
-  };
+  // Badge config — sinkron sama Home
+  const badgeConfig = useMemo(() => {
+    if (isMovie(item)) return { label: 'Movie', color: '#a06800' };
+    if (isComic(item)) return { label: 'Komik', color: '#0288D1' };
+    if (isFilm(item)) return { label: item.type ?? 'Film', color: '#1565c0' };
+    if (isAnime(item))
+      return {
+        label: item.status,
+        color: item.status === 'Ongoing' ? '#920000' : '#006600',
+      };
+    return null;
+  }, [item]);
 
   return (
     <TouchableOpacityAnimated
       entering={FadeInRight}
-      style={[styles.listContainer, { minHeight: 100 }]}
+      style={styles.searchCard}
+      activeOpacity={0.8}
       onPress={() => {
         if (!isComic(item) && !isAnime(item) && !isMovie(item) && !isFilm(item)) return;
-
         props.navigation.dispatch(
           StackActions.push('FromUrl', {
             title: item.title,
@@ -760,119 +661,65 @@ function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; pare
           }),
         );
       }}>
-      <ImageLoading
-        resizeMode="stretch"
-        source={{ uri: item.thumbnailUrl }}
-        style={[
-          styles.listImage,
-          isComic(item) && 'concept' in item ? { width: 150, height: 'auto' } : undefined,
-        ]}>
-        {isComic(item) && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 5,
-              right: 5,
-              backgroundColor: '#0000009d',
-              padding: 5,
-              borderRadius: 8,
-            }}>
-            <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-              {!('concept' in item) && item.latestChapter && 'Chapter'} {item.latestChapter}
-            </Text>
+      {/* Thumbnail dengan badge pojok kiri atas — sinkron sama Home */}
+      <View style={styles.searchThumbnailWrapper}>
+        <ImageLoading
+          resizeMode="cover"
+          source={{ uri: item.thumbnailUrl }}
+          style={styles.searchThumbnail}
+        />
+        {badgeConfig && (
+          <View style={[styles.searchBadge, { backgroundColor: badgeConfig.color }]}>
+            <Text style={styles.searchBadgeText}>{badgeConfig.label}</Text>
           </View>
         )}
-      </ImageLoading>
+        {isAnime(item) && item.rating && (
+          <View style={styles.ratingBadge}>
+            <Icon name="star" size={9} color="#FFD700" />
+            <Text style={styles.ratingBadgeText}> {item.rating}</Text>
+          </View>
+        )}
+        {isFilm(item) && item.rating && (
+          <View style={styles.ratingBadge}>
+            <Icon name="star" size={9} color="#FFD700" />
+            <Text style={styles.ratingBadgeText}> {item.rating}</Text>
+          </View>
+        )}
+      </View>
 
+      {/* Info panel dengan blur bg */}
       <ImageLoading
         displayLoading={false}
         source={{ uri: item.thumbnailUrl }}
-        blurRadius={5}
-        style={{ flex: 1 }}>
-        <DarkOverlay transparent={0.8} />
-        <View style={{ flexDirection: 'row', flex: 1 }}>
-          <View style={styles.ratingInfo}>
-            {isAnime(item) ||
-              (isFilm(item) && (
-                <Text style={[globalStyles.text, styles.animeSearchListDetailText]}>
-                  <Icon name="star" color="gold" /> {item.rating}
-                </Text>
-              ))}
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              marginHorizontal: 5,
-              gap: 5,
-            }}>
+        blurRadius={8}
+        style={{ flex: 1, borderTopRightRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden' }}>
+        <DarkOverlay transparent={0.82} />
+
+        <View style={styles.searchInfoInner}>
+          {/* Judul */}
+          <Text numberOfLines={2} style={styles.searchTitle}>
+            {item.title}{isFilm(item) && item.year !== 'Unknown' ? ` (${item.year})` : ''}
+          </Text>
+
+          {/* Synopsis (film only) */}
+          {isFilm(item) && item.synopsis ? (
+            <Text style={styles.synopsisText} numberOfLines={2}>{item.synopsis}</Text>
+          ) : null}
+
+          {/* Tags bawah */}
+          <View style={styles.tagRow}>
+            {/* Quality / Season (film) */}
             {isFilm(item) && (item.quality || item.numberOfSeasons) && (
-              <View
-                style={[
-                  styles.statusInfo,
-                  {
-                    backgroundColor: item.quality ? 'rgb(0, 57, 80)' : '#ffffff2c',
-                    marginTop: 5,
-                  },
-                ]}>
-                <Text style={[globalStyles.text, styles.animeSearchListDetailText]}>
-                  <Icon name={item.quality ? 'video-camera' : 'tv'} color={'rgb(220, 184, 255)'} />{' '}
-                  {item.quality ?? `S${item.numberOfSeasons}`}
-                </Text>
+              <View style={[styles.tag, { backgroundColor: 'rgb(0,57,80)' }]}>
+                <Icon name={item.quality ? 'video-camera' : 'tv'} size={10} color="rgb(220,184,255)" />
+                <Text style={styles.tagText}>{item.quality ?? `S${item.numberOfSeasons}`}</Text>
               </View>
             )}
-            <View
-              style={[
-                styles.statusInfo,
-                {
-                  backgroundColor:
-                    isAnime(item) && item.status === 'Ongoing'
-                      ? '#920000'
-                      : isMovie(item)
-                        ? '#a06800'
-                        : '#006600',
-                },
-              ]}>
-              <Text style={[globalStyles.text, styles.animeSearchListDetailText]}>
-                {isMovie(item) ? 'Movie' : isComic(item) || isFilm(item) ? item.type : item.status}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.listTitle]}>
-          <Text
-            numberOfLines={4}
-            style={[{ flexShrink: 1 }, [globalStyles.text, styles.animeSearchListDetailText]]}>
-            {item?.title} {isFilm(item) && item.year !== 'Unknown' && `(${item.year})`}
-          </Text>
-        </View>
-
-        <View style={styles.releaseInfo}>
-          {isFilm(item) && (
-            <Text style={styles.synopsisFilmText} numberOfLines={2}>
-              {item.synopsis}
-            </Text>
-          )}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+            {/* Genre / Status / concept */}
             {!isMovie(item) && !isFilm(item) && (
-              <View
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.445)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 14,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="tags" color={styles.animeSearchListDetailText.color} />{' '}
+              <View style={[styles.tag, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                <Icon name="tags" size={10} color="#fff" />
+                <Text style={styles.tagText} numberOfLines={1}>
                   {isAnime(item)
                     ? item.genres.join(', ')
                     : 'status' in item
@@ -881,50 +728,27 @@ function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; pare
                 </Text>
               </View>
             )}
+            {/* Comics additional info */}
             {isComic(item) && (
-              <View
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.445)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 14,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="info" color={styles.animeSearchListDetailText.color} />{' '}
-                  {item.additionalInfo}
+              <View style={[styles.tag, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                <Icon name="info" size={10} color="#fff" />
+                <Text style={styles.tagText} numberOfLines={1}>{item.additionalInfo}</Text>
+              </View>
+            )}
+            {/* Comics source */}
+            {isComic(item) && item.source && (
+              <View style={[styles.tag, { backgroundColor: theme.colors.tertiaryContainer }]}>
+                <Icon name="globe" size={10} color={theme.colors.onTertiaryContainer} />
+                <Text style={[styles.tagText, { color: theme.colors.onTertiaryContainer }]}>
+                  {item.source.toUpperCase()}
                 </Text>
               </View>
             )}
-
-            {isComic(item) && item.source && (
-              <View
-                style={{
-                  backgroundColor: theme.colors.tertiaryContainer,
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 12,
-                      color: theme.colors.onTertiaryContainer,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="globe" color={theme.colors.onTertiaryContainer} />{' '}
-                  {item.source.toUpperCase()}
-                </Text>
+            {/* Comics latest chapter */}
+            {isComic(item) && item.latestChapter && (
+              <View style={[styles.tag, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                <Icon name="book" size={10} color="#fff" />
+                <Text style={styles.tagText}>Ch. {item.latestChapter}</Text>
               </View>
             )}
           </View>
@@ -942,9 +766,73 @@ function useStyles() {
   const globalStyles = useGlobalStyles();
   const theme = useTheme();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   return useMemo(
     () =>
       StyleSheet.create({
+        // Search bar
+        searchBarRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 8,
+          paddingTop: 6,
+          paddingBottom: 2,
+          gap: 4,
+        },
+        backButton: {
+          paddingHorizontal: 8,
+          paddingVertical: 6,
+        },
+        searchBar: {
+          borderRadius: 12,
+          elevation: 2,
+        },
+        segmentedButtons: {
+          marginHorizontal: 10,
+          marginTop: 8,
+          marginBottom: 4,
+        },
+        // Loading
+        loadingRow: {
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 8,
+          paddingVertical: 6,
+        },
+        loadingText: {
+          opacity: 0.7,
+          fontSize: 13,
+        },
+        // Result header
+        resultHeaderRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          paddingHorizontal: 14,
+          paddingVertical: 6,
+        },
+        resultHeaderText: {
+          fontSize: 12,
+          fontWeight: '600',
+          opacity: 0.8,
+          flex: 1,
+        },
+        movieNoteText: {
+          fontSize: 11,
+          color: '#a06800',
+          fontStyle: 'italic',
+        },
+        totalAnimeText: {
+          textAlign: 'center',
+          marginTop: 8,
+          marginBottom: 4,
+          fontWeight: 'bold',
+          fontSize: 13,
+          opacity: 0.7,
+        },
+        // Empty state
         center: {
           justifyContent: 'center',
           alignItems: 'center',
@@ -952,67 +840,45 @@ function useStyles() {
         },
         emptyStateContainer: {
           alignItems: 'center',
-          paddingHorizontal: 40,
+          paddingHorizontal: 36,
         },
         emptyStateTitle: {
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 'bold',
-          marginBottom: 8,
+          marginBottom: 6,
           textAlign: 'center',
         },
         emptyStateSubtitle: {
-          fontSize: 14,
+          fontSize: 13,
           textAlign: 'center',
           opacity: 0.6,
-          marginBottom: 24,
+          marginBottom: 20,
         },
         proTip: {
-          fontSize: 13,
+          fontSize: 12,
           fontStyle: 'italic',
-          opacity: 0.8,
+          opacity: 0.75,
           marginBottom: 4,
         },
         loadButton: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 12,
-          paddingHorizontal: 24,
-          borderRadius: 25,
+          gap: 8,
+          paddingVertical: 11,
+          paddingHorizontal: 22,
+          borderRadius: 24,
           elevation: 2,
         },
         loadButtonText: {
           fontWeight: 'bold',
-          marginLeft: 10,
-          fontSize: 15,
+          fontSize: 14,
         },
-        nullDataText: {
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
-          fontSize: 17,
-        },
-        loadingView: {
-          position: 'absolute',
-          bottom: 10,
-          left: 0,
-          right: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-        loadingText: {
-          fontWeight: 'bold',
-          color: colorScheme === 'dark' ? '#53c412' : 'black',
-          backgroundColor: colorScheme === 'dark' ? '#1d1d1d' : '#f0f0f0',
-          padding: 12,
-          zIndex: 2,
-          borderRadius: 12,
-          borderColor: colorScheme === 'dark' ? '#53c412' : 'black',
-          borderWidth: 1.3,
-        },
+        // Anime list default
         animeList: {
           justifyContent: 'center',
           paddingVertical: 10,
           flexDirection: 'row',
-          backgroundColor: colorScheme === 'dark' ? '#1d1d1d' : '#f5f5f5',
+          backgroundColor: isDark ? '#1d1d1d' : '#f5f5f5',
           marginHorizontal: 16,
           borderRadius: 12,
           elevation: 2,
@@ -1023,52 +889,96 @@ function useStyles() {
           fontSize: 12,
           color: theme.colors.onPrimaryContainer,
         },
-        animeSearchListDetailText: {
+        animeListTitle: {
+          textAlign: 'center',
+          flex: 1,
           fontWeight: 'bold',
-          color: 'white',
         },
-        listContainer: {
+        // Search result card
+        searchCard: {
           flexDirection: 'row',
-          backgroundColor: colorScheme === 'dark' ? '#333' : '#fff',
-          borderRadius: 16,
+          backgroundColor: isDark ? '#1e1e1e' : '#fff',
+          borderRadius: 14,
           elevation: 4,
+          overflow: 'hidden',
+          minHeight: 110,
+          borderWidth: 0.5,
+          borderColor: isDark ? '#2a2a2a' : '#e8e8e8',
         },
-        listImage: {
+        searchThumbnailWrapper: {
+          position: 'relative',
           width: 80,
-          height: 150,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
         },
-        listTitle: {
-          flexShrink: 1,
-          paddingHorizontal: 5,
-          justifyContent: 'center',
-          flex: 1,
-          marginLeft: 5,
+        searchThumbnail: {
+          width: 80,
+          height: '100%',
         },
-        ratingInfo: {
-          flex: 1,
+        // Badge pojok kiri atas — sinkron sama Home
+        searchBadge: {
+          position: 'absolute',
+          top: 5,
+          left: 5,
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
         },
-        statusInfo: {
-          padding: 4,
-          borderRadius: 6,
-        },
-        synopsisFilmText: {
-          color: 'gray',
+        searchBadgeText: {
+          color: '#fff',
+          fontSize: 9,
           fontWeight: 'bold',
         },
-        releaseInfo: {
-          justifyContent: 'flex-end',
-          flex: 1,
-        },
-        searchHistoryHeader: {
+        ratingBadge: {
+          position: 'absolute',
+          top: 5,
+          right: 5,
           flexDirection: 'row',
           alignItems: 'center',
-          padding: 8,
-          backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0',
-          borderRadius: 7,
-          marginBottom: 5,
+          backgroundColor: 'rgba(0,0,0,0.72)',
+          paddingHorizontal: 5,
+          paddingVertical: 2,
+          borderRadius: 4,
         },
+        ratingBadgeText: {
+          color: '#fff',
+          fontSize: 9,
+          fontWeight: 'bold',
+        },
+        searchInfoInner: {
+          flex: 1,
+          padding: 10,
+          justifyContent: 'space-between',
+        },
+        searchTitle: {
+          color: '#fff',
+          fontSize: 13,
+          fontWeight: 'bold',
+          lineHeight: 18,
+        },
+        synopsisText: {
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 11,
+          marginTop: 4,
+        },
+        tagRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 4,
+          marginTop: 6,
+        },
+        tag: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 7,
+          paddingVertical: 3,
+          borderRadius: 5,
+        },
+        tagText: {
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: '600',
+        },
+        // Search history overlay
         searchHistoryContainer: {
           position: 'absolute',
           top: 60,
@@ -1076,38 +986,51 @@ function useStyles() {
           right: 0,
           bottom: 0,
           zIndex: 10,
-          backgroundColor: colorScheme === 'dark' ? '#121212' : '#fafafa',
+          backgroundColor: isDark ? '#121212' : '#fafafa',
           padding: 10,
           elevation: 5,
         },
         searchHistoryScrollBox: {
-          backgroundColor: colorScheme === 'dark' ? '#1e1e1e' : '#f8f8f8',
           padding: 4,
         },
-        searchHistoryItemContainer: {
-          backgroundColor: colorScheme === 'light' ? '#e3e5e6' : '#252525',
-          borderRadius: 9,
-          marginVertical: 3,
-        },
-        closeSearchResult: {
-          position: 'absolute',
-          backgroundColor: '#dd0d0dd3',
-          borderRadius: 20,
+        searchHistoryHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
           padding: 10,
-          paddingHorizontal: 12,
-          bottom: 20,
-          right: 10,
-          zIndex: 1,
+          backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0',
+          borderRadius: 10,
+          marginBottom: 6,
         },
+        historyHeaderText: {
+          fontWeight: 'bold',
+          fontSize: 13,
+        },
+        historyDivider: {
+          height: 1,
+          backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+          marginHorizontal: 8,
+        },
+        searchHistoryItemContainer: {
+          backgroundColor: isDark ? '#1e1e1e' : '#f5f5f5',
+          borderRadius: 10,
+          marginVertical: 2,
+        },
+        historyItem: {
+          padding: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          minHeight: 44,
+        },
+        // Section header
         sectionHeaderContainer: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          justifyContent: 'center',
+          paddingVertical: 8,
+          paddingHorizontal: 4,
         },
         sectionHeaderText: {
-          fontSize: 16,
+          fontSize: 13,
           fontWeight: 'bold',
           marginHorizontal: 10,
           color: theme.colors.primary,
@@ -1117,8 +1040,25 @@ function useStyles() {
           height: 1,
           backgroundColor: theme.colors.outlineVariant,
         },
+        // Close button
+        closeSearchResult: {
+          position: 'absolute',
+          backgroundColor: '#dd0d0dd3',
+          borderRadius: 20,
+          padding: 10,
+          bottom: 20,
+          right: 12,
+          zIndex: 1,
+          elevation: 6,
+        },
+        snackbar: {
+          zIndex: 2,
+          position: 'absolute',
+          bottom: 0,
+          alignSelf: 'center',
+        },
       }),
-    [globalStyles.text.color, colorScheme, theme],
+    [globalStyles.text.color, isDark, theme],
   );
 }
 
