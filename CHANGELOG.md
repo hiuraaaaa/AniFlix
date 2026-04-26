@@ -1,3 +1,6 @@
+# v1.2.1_JS-8 (26 April 2026)
+[Fix] Perbaikan data film (migrasi ke sistem API baru)
+
 # v1.2.1_JS-7 (24 April 2026)
 [Fix] Perbaikan sinopsis episode series yang salah
 [Fix] Handle subtitle yang muncul di waktu bersamaan
