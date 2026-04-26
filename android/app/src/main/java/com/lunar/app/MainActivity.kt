@@ -1,4 +1,6 @@
-package com.pirles.anime
+package com.lunar.app
+
+import com.lunar.app.BuildConfig
 import expo.modules.ReactActivityDelegateWrapper
 
 import android.os.Bundle
