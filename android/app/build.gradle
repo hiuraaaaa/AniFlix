@@ -120,9 +120,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace "com.pirles.anime"
+    namespace "com.lunar.app"
     defaultConfig {
-        applicationId "com.pirles.anime"
+        applicationId "com.lunar.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 221
@@ -136,10 +136,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('anime.keystore')
-            storePassword 'pirlesaja321'
-            keyAlias 'prAnime'
-            keyPassword 'pirlesaja321'
+            storeFile file('lunar.keystore')
+            storePassword 'lunar321'
+            keyAlias 'lunarKey'
+            keyPassword 'lunar321'
         }
     }
     buildTypes {
