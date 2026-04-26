@@ -5,7 +5,6 @@ import * as Updates from 'expo-updates';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   ToastAndroid,
@@ -38,6 +37,8 @@ type Props = NativeStackScreenProps<RootStackNavigator, 'connectToServer'>;
 
 function Loading(props: Props) {
   const styles = useStyles();
+  const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
 
   useEffect(() => {
     Orientation.lockToPortrait();
@@ -59,16 +60,8 @@ function Loading(props: Props) {
     const jsondata: EpisodeBaruHome | void = await AnimeAPI.home(signal).catch(() => {
       ToastAndroid.show('Gagal menyiapkan data anime series', ToastAndroid.SHORT);
     });
-    setLoadStatus(old => ({
-      ...old,
-      'Menyiapkan data anime series': true,
-    }));
-    if (jsondata === undefined) {
-      return {
-        newAnime: [],
-        jadwalAnime: [],
-      };
-    }
+    setLoadStatus(old => ({ ...old, 'Menyiapkan data anime series': true }));
+    if (jsondata === undefined) return { newAnime: [], jadwalAnime: [] };
     return jsondata;
   }, []);
 
@@ -112,10 +105,7 @@ function Loading(props: Props) {
 
   const fetchDomain = useCallback(async (signal: AbortSignal) => {
     await fetchLatestDomain(signal).catch(() => {
-      ToastAndroid.show(
-        'Gagal mendapatkan domain terbaru, menggunakan domain default',
-        ToastAndroid.SHORT,
-      );
+      ToastAndroid.show('Gagal mendapatkan domain terbaru, menggunakan domain default', ToastAndroid.SHORT);
     });
   }, []);
 
@@ -124,23 +114,13 @@ function Loading(props: Props) {
     const timoeut = setTimeout(() => abort.abort(), 5000);
     const onAbort = () => abort.abort();
     signal.addEventListener('abort', onAbort);
-
     const data = await fetch(
       'https://api.github.com/repos/FightFarewellFearless/AniFlix/releases?per_page=1',
-      {
-        signal: abort.signal,
-        headers: {
-          'User-Agent': deviceUserAgent,
-        },
-      },
-    )
-      .then(d => d.json())
-      .catch(() => {});
+      { signal: abort.signal, headers: { 'User-Agent': deviceUserAgent } },
+    ).then(d => d.json()).catch(() => {});
     clearTimeout(timoeut);
     signal.removeEventListener('abort', onAbort);
-
     if (signal.aborted) return null;
-
     if (data === undefined) {
       ToastAndroid.show('Error saat mengecek versi', ToastAndroid.SHORT);
       return true;
@@ -154,38 +134,28 @@ function Loading(props: Props) {
   }, []);
 
   const moviePromiseResolve = useRef<(val?: unknown) => void>(null);
-  const [animeMoviePromise] = useState(
-    () => new Promise(res => (moviePromiseResolve.current = res)),
-  );
+  const [animeMoviePromise] = useState(() => new Promise(res => (moviePromiseResolve.current = res)));
+
   const onAnimeMovieReady = useCallback(() => {
-    setLoadStatus(old => ({
-      ...old,
-      'Menyiapkan data anime movie': true,
-    }));
+    setLoadStatus(old => ({ ...old, 'Menyiapkan data anime movie': true }));
     setIsAnimeMovieWebViewOpen(false);
     moviePromiseResolve.current?.();
   }, []);
 
-  const connectToServers = useCallback(
-    async (signal: AbortSignal) => {
-      setIsAnimeMovieWebViewOpen(true);
-      const animeData = await fetchAnimeData(signal);
-      Promise.all([animeData, animeMoviePromise]).then(([anime]) => {
-        if (signal.aborted) return;
-        if (anime === undefined) {
-          return;
-        }
-        props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
-      });
-    },
-    [animeMoviePromise, fetchAnimeData, props.navigation],
-  );
+  const connectToServers = useCallback(async (signal: AbortSignal) => {
+    setIsAnimeMovieWebViewOpen(true);
+    const animeData = await fetchAnimeData(signal);
+    Promise.all([animeData, animeMoviePromise]).then(([anime]) => {
+      if (signal.aborted) return;
+      if (anime === undefined) return;
+      props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
+    });
+  }, [animeMoviePromise, fetchAnimeData, props.navigation]);
 
   useFocusEffect(
     useCallback(() => {
       const abortController = new AbortController();
       const signal = abortController.signal;
-
       (async () => {
         setLoadStatus({
           'Menyiapkan database': false,
@@ -196,18 +166,11 @@ function Loading(props: Props) {
         });
         await prepareData();
         if (signal.aborted) return;
-
         await deleteUnnecessaryUpdate();
         if (signal.aborted) return;
-
-        setLoadStatus(old => ({
-          ...old,
-          'Menyiapkan database': true,
-        }));
-
+        setLoadStatus(old => ({ ...old, 'Menyiapkan database': true }));
         const nativeAppVersion = await checkNativeAppVersion(signal);
         if (signal.aborted) return;
-
         if (nativeAppVersion === null) {
           props.navigation.dispatch(StackActions.replace('FailedToConnect'));
         } else if (nativeAppVersion === true || __DEV__) {
@@ -215,16 +178,10 @@ function Loading(props: Props) {
           async function OTADone() {
             if (isOTADoneExecuted || signal.aborted) return;
             isOTADoneExecuted = true;
-            setLoadStatus(old => ({
-              ...old,
-              'Mengecek versi aplikasi': true,
-            }));
+            setLoadStatus(old => ({ ...old, 'Mengecek versi aplikasi': true }));
             await fetchDomain(signal);
             if (signal.aborted) return;
-            setLoadStatus(old => ({
-              ...old,
-              'Mendapatkan domain terbaru': true,
-            }));
+            setLoadStatus(old => ({ ...old, 'Mendapatkan domain terbaru': true }));
             connectToServers(signal);
           }
           const OTATimeout = setTimeout(() => {
@@ -234,38 +191,18 @@ function Loading(props: Props) {
           }, 6_000);
           const OTAUpdate = await Updates.checkForUpdateAsync()
             .catch(() => {
-              if (!signal.aborted) {
-                ToastAndroid.show('Gagal mengecek OTA update', ToastAndroid.SHORT);
-              }
+              if (!signal.aborted) ToastAndroid.show('Gagal mengecek OTA update', ToastAndroid.SHORT);
               return null;
             })
             .finally(() => clearTimeout(OTATimeout));
-
           if (signal.aborted) return;
-
           if (OTAUpdate !== null && OTAUpdate.isAvailable) {
             const changelog = await fetch(
               'https://raw.githubusercontent.com/FightFarewellFearless/AniFlix/refs/heads/master/CHANGELOG.md',
-              {
-                signal,
-                headers: {
-                  'User-Agent': deviceUserAgent,
-                  'Cache-Control': 'no-cache',
-                },
-              },
-            )
-              .then(d => d.text())
-              .catch(() => 'Gagal mendapatkan changelog');
-
+              { signal, headers: { 'User-Agent': deviceUserAgent, 'Cache-Control': 'no-cache' } },
+            ).then(d => d.text()).catch(() => 'Gagal mendapatkan changelog');
             if (signal.aborted) return;
-
-            props.navigation.dispatch(
-              StackActions.replace('NeedUpdate', {
-                changelog,
-                size: 0,
-                nativeUpdate: false,
-              }),
-            );
+            props.navigation.dispatch(StackActions.replace('NeedUpdate', { changelog, size: 0, nativeUpdate: false }));
             return;
           }
           await OTADone();
@@ -273,29 +210,11 @@ function Loading(props: Props) {
           const latestVersion = nativeAppVersion.tag_name;
           const changelog = nativeAppVersion.body;
           const download = nativeAppVersion.assets[0].browser_download_url;
-
-          props.navigation.dispatch(
-            StackActions.replace('NeedUpdate', {
-              latestVersion,
-              changelog,
-              download,
-              nativeUpdate: true,
-            }),
-          );
+          props.navigation.dispatch(StackActions.replace('NeedUpdate', { latestVersion, changelog, download, nativeUpdate: true }));
         }
       })();
-
-      return () => {
-        abortController.abort();
-      };
-    }, [
-      prepareData,
-      checkNativeAppVersion,
-      props.navigation,
-      deleteUnnecessaryUpdate,
-      fetchDomain,
-      connectToServers,
-    ]),
+      return () => { abortController.abort(); };
+    }, [prepareData, checkNativeAppVersion, props.navigation, deleteUnnecessaryUpdate, fetchDomain, connectToServers]),
   );
 
   useEffect(() => {
@@ -315,8 +234,10 @@ function Loading(props: Props) {
     [],
   );
 
+  const currentStep = Object.entries(loadStatus).find(([, v]) => !v)?.[0] ?? 'Selesai';
+
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {isAnimeMovieWebViewOpen && (
         <Suspense>
           <AnimeMovieWebView
@@ -327,48 +248,44 @@ function Loading(props: Props) {
         </Suspense>
       )}
 
-      <View style={styles.content}>
+      {/* Main content - centered */}
+      <View style={styles.main}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.appName}>Lunar</Text>
-          <Text style={styles.subtitle}>Anime · Film · Komik</Text>
-        </View>
+        <Text style={styles.appName}>Lunar</Text>
+        <Text style={styles.subtitle}>Anime · Film · Komik</Text>
 
-        {/* Quote Card */}
-        <View style={styles.quoteCard}>
-          <Text style={styles.quoteSymbol}>"</Text>
-          <Text style={styles.quoteText}>{quotes.quote}</Text>
-          <Text style={styles.quoteAuthor}>— {quotes.by}</Text>
-        </View>
+        <View style={styles.spacer} />
 
-        {/* Progress */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Reanimated.View style={[styles.progressFill, progressBarStyle]} />
-          </View>
-          <Text style={styles.progressText}>{Math.round(progressValue)}%</Text>
+        {/* Progress bar */}
+        <View style={styles.progressBar}>
+          <Reanimated.View style={[styles.progressFill, progressBarStyle]} />
         </View>
+        <Text style={styles.currentStep}>{currentStep}</Text>
 
-        {/* Status */}
+        <View style={styles.spacerSmall} />
+
+        {/* Status list */}
         <View style={styles.statusContainer}>
           {Object.entries(loadStatus).map(([key, value]) => (
             <View style={styles.statusItem} key={key}>
               {value ? (
-                <MaterialIcon name="check-circle" size={18} color="#4CAF50" />
+                <MaterialIcon name="check-circle" size={16} color="#4CAF50" />
               ) : (
-                <ActivityIndicator size="small" color={styles.loadingIndicator.color} />
+                <ActivityIndicator size={14} color={theme.colors.primary} />
               )}
-              <Text style={styles.statusText}>{key}</Text>
+              <Text style={[styles.statusText, value && styles.statusTextDone]}>{key}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* Footer */}
+      {/* Footer - quote + version */}
       <View style={styles.footer}>
-        <Text style={styles.versionText}>v{appVersion}</Text>
+        <Text style={styles.quoteText} numberOfLines={2}>"{quotes.quote}"</Text>
+        <Text style={styles.quoteAuthor}>— {quotes.by}</Text>
+        <Text style={styles.versionText}>v{appVersion} · JS_{OTAJSVersion}</Text>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -380,111 +297,93 @@ function useStyles() {
     () =>
       StyleSheet.create({
         container: {
-          flexGrow: 1,
-          padding: 24,
-          justifyContent: 'space-between',
-          backgroundColor: isDark ? '#0f0f0f' : '#f5f5f5',
-        },
-        content: {
           flex: 1,
-          alignItems: 'center',
+          backgroundColor: isDark ? '#0f0f0f' : '#f5f5f5',
+          paddingHorizontal: 28,
+          paddingBottom: 32,
+          paddingTop: 60,
+          justifyContent: 'space-between',
+        },
+        main: {
+          flex: 1,
           justifyContent: 'center',
-          gap: 20,
         },
-        header: {
-          alignItems: 'center',
-          gap: 6,
-        },
-
         appName: {
-          fontSize: 36,
+          fontSize: 42,
           fontWeight: 'bold',
           color: theme.colors.primary,
-          letterSpacing: 2,
+          letterSpacing: 3,
+          textAlign: 'center',
         },
         subtitle: {
           fontSize: 13,
-          color: isDark ? '#888' : '#999',
-          letterSpacing: 1,
+          color: isDark ? '#666' : '#aaa',
+          letterSpacing: 1.5,
+          textAlign: 'center',
+          marginTop: 4,
         },
-        quoteCard: {
-          backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-          borderRadius: 16,
-          padding: 20,
-          width: '100%',
-          elevation: 2,
-          borderLeftWidth: 3,
-          borderLeftColor: theme.colors.primary,
+        spacer: {
+          height: 40,
         },
-        quoteSymbol: {
-          fontSize: 36,
-          color: theme.colors.primary,
-          lineHeight: 36,
-          marginBottom: 4,
-          opacity: 0.6,
-        },
-        quoteText: {
-          fontSize: 14,
-          fontStyle: 'italic',
-          color: isDark ? '#e0e0e0' : '#444',
-          lineHeight: 22,
-          marginBottom: 10,
-        },
-        quoteAuthor: {
-          fontSize: 12,
-          fontWeight: 'bold',
-          color: theme.colors.primary,
-          textAlign: 'right',
-        },
-        progressContainer: {
-          width: '100%',
-          alignItems: 'center',
-          gap: 6,
+        spacerSmall: {
+          height: 16,
         },
         progressBar: {
-          height: 6,
+          height: 4,
           width: '100%',
-          backgroundColor: isDark ? '#2a2a2a' : '#e0e0e0',
-          borderRadius: 3,
+          backgroundColor: isDark ? '#222' : '#e0e0e0',
+          borderRadius: 2,
           overflow: 'hidden',
         },
         progressFill: {
           height: '100%',
           backgroundColor: theme.colors.primary,
-          borderRadius: 3,
+          borderRadius: 2,
         },
-        progressText: {
+        currentStep: {
           fontSize: 12,
-          color: isDark ? '#888' : '#999',
+          color: theme.colors.primary,
+          marginTop: 8,
+          textAlign: 'center',
+          fontWeight: '500',
         },
         statusContainer: {
-          width: '100%',
-          backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-          borderRadius: 16,
-          padding: 16,
-          elevation: 2,
-          gap: 4,
+          gap: 6,
         },
         statusItem: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 6,
-          gap: 10,
+          gap: 8,
+          paddingVertical: 3,
         },
         statusText: {
           fontSize: 13,
-          color: isDark ? '#ccc' : '#444',
+          color: isDark ? '#555' : '#bbb',
+        },
+        statusTextDone: {
+          color: isDark ? '#888' : '#999',
+          textDecorationLine: 'line-through',
         },
         footer: {
           alignItems: 'center',
-          paddingTop: 16,
+          gap: 3,
+        },
+        quoteText: {
+          fontSize: 11,
+          fontStyle: 'italic',
+          color: isDark ? '#444' : '#bbb',
+          textAlign: 'center',
+          lineHeight: 16,
+        },
+        quoteAuthor: {
+          fontSize: 10,
+          color: isDark ? '#333' : '#ccc',
+          textAlign: 'center',
         },
         versionText: {
-          fontSize: 11,
-          color: isDark ? '#444' : '#bbb',
-        },
-        loadingIndicator: {
-          color: theme.colors.primary,
+          fontSize: 10,
+          color: isDark ? '#2a2a2a' : '#ddd',
+          marginTop: 6,
         },
       }),
     [isDark, theme.colors.primary],
