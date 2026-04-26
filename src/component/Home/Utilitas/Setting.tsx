@@ -13,6 +13,7 @@ import {
   Platform,
   ScrollView,
   View,
+  StyleSheet,
 } from 'react-native';
 import RNFetchBlob from 'react-native-blob-util';
 import {
@@ -23,6 +24,7 @@ import {
   Portal,
   Surface,
   Switch,
+  Text,
   TouchableRipple,
   useTheme,
 } from 'react-native-paper';
@@ -50,31 +52,36 @@ type BackupJSON = Omit<typeof defaultDatabaseValue, 'historyKeyCollectionsOrder'
   history: string;
 };
 
-interface SettingsData {
+interface SettingsItem {
   title: string;
   description: string;
   iconName: FontAwesomeIconName;
   iconColor?: string;
   rightComponent?: JSX.Element;
   handler: () => any;
+  danger?: boolean;
+}
+
+interface SettingsGroup {
+  label: string;
+  items: SettingsItem[];
 }
 
 type Props = NativeStackScreenProps<UtilsStackNavigator, 'Setting'>;
 
 function Setting(_props: Props) {
   const theme = useTheme();
-  const enableBatteryTimeInfo = useKeyValueIfFocused('enableBatteryTimeInfo');
+  const isDark = theme.dark;
 
+  const enableBatteryTimeInfo = useKeyValueIfFocused('enableBatteryTimeInfo');
   const appTheme = useKeyValueIfFocused('colorScheme');
   const appThemeDropdown = useRef<IDropdownRef>(null);
-
   const audioMixingMode = useKeyValueIfFocused('audioMixingMode');
   const AMMDropdown = useRef<IDropdownRef>(null);
 
   const batteryTimeInfoSwitch = enableBatteryTimeInfo === 'true';
   const batteryTimeSwitchHandler = useCallback(() => {
-    const newValue = String(!batteryTimeInfoSwitch);
-    DatabaseManager.set('enableBatteryTimeInfo', newValue);
+    DatabaseManager.set('enableBatteryTimeInfo', String(!batteryTimeInfoSwitch));
   }, [batteryTimeInfoSwitch]);
 
   const nowPlayingNotificationSwitch = useModifiedKeyValueIfFocused(
@@ -82,8 +89,7 @@ function Setting(_props: Props) {
     res => res === 'true',
   );
   const nowPlayingNotificationSwitchHandler = useCallback(() => {
-    const newValue = String(!nowPlayingNotificationSwitch);
-    DatabaseManager.set('enableNowPlayingNotification', newValue);
+    DatabaseManager.set('enableNowPlayingNotification', String(!nowPlayingNotificationSwitch));
   }, [nowPlayingNotificationSwitch]);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -103,14 +109,11 @@ function Setting(_props: Props) {
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
           backup();
         } else {
-          DialogManager.alert(
-            'Akses ditolak',
-            'Gagal mencadangkan data dikarenakan akses ke penyimpanan di tolak',
-          );
+          DialogManager.alert('Akses ditolak', 'Gagal mencadangkan data dikarenakan akses ke penyimpanan di tolak');
         }
       }
       async function backup() {
-        const fileuri = 'AniFlix_backup_' + moment().format('YYYY-MM-DD_HH-mm-ss') + '.aniflix.txt';
+        const fileuri = 'Lunar_backup_' + moment().format('YYYY-MM-DD_HH-mm-ss') + '.lunar.txt';
         modalText.set('Membuat Backup Data...');
         setModalVisible(true);
         const data = Buffer.from(
@@ -123,7 +126,7 @@ function Setting(_props: Props) {
           mimeType: 'text/plain',
         });
         if (backupFile) {
-          DialogManager.alert('Berhasil', `Data berhasil di backup!`);
+          DialogManager.alert('Berhasil', 'Data berhasil di backup!');
         }
       }
     } catch (e: any) {
@@ -139,7 +142,6 @@ function Setting(_props: Props) {
       const currentData: typeof restoreDataFromBackup = JSON.parse(
         (await DatabaseManager.getDataForBackup())[target],
       );
-
       for (const result of restoreDataFromBackup) {
         const dataINDEX = currentData.findIndex(
           val =>
@@ -147,11 +149,8 @@ function Setting(_props: Props) {
             val.isComics === result.isComics &&
             val.isMovie === result.isMovie,
         );
-
         if (dataINDEX >= 0) {
-          if (currentData[dataINDEX].date > result.date) {
-            continue;
-          }
+          if (currentData[dataINDEX].date > result.date) continue;
           currentData.splice(dataINDEX, 1);
         }
         currentData.push(result);
@@ -171,9 +170,7 @@ function Setting(_props: Props) {
       (await DatabaseManager.getDataForBackup()).searchHistory,
     );
     restoreData.reverse().forEach(val => {
-      if (!currentSearchHistory.includes(val)) {
-        currentSearchHistory.unshift(val);
-      }
+      if (!currentSearchHistory.includes(val)) currentSearchHistory.unshift(val);
     });
     await DatabaseManager.set('searchHistory', JSON.stringify(currentSearchHistory));
   }, []);
@@ -184,9 +181,7 @@ function Setting(_props: Props) {
         type: 'text/plain',
         copyToCacheDirectory: true,
       });
-
       if (!doc.assets) return;
-
       const data = await RNFetchBlob.fs.readFile(doc.assets?.[0].uri, 'utf8');
       const backupDataJSON: BackupJSON = JSON.parse(Buffer.from(data, 'base64').toString('utf8'));
       await RNFetchBlob.fs.unlink(doc.assets?.[0].uri);
@@ -202,9 +197,7 @@ function Setting(_props: Props) {
               const restoredData = backupDataJSON[value];
               if (value === 'colorScheme') {
                 modalText.set('Memulihkan tema aplikasi');
-                Appearance.setColorScheme(
-                  restoredData === 'auto' ? undefined : (restoredData as ColorSchemeName),
-                );
+                Appearance.setColorScheme(restoredData === 'auto' ? undefined : (restoredData as ColorSchemeName));
               } else if (value === 'searchHistory') {
                 modalText.set('Memulihkan histori pencarian');
                 await restoreSearchHistory(JSON.parse(restoredData));
@@ -220,10 +213,9 @@ function Setting(_props: Props) {
         DialogManager.alert('Restore gagal!', e.message);
       }
     } catch (e: any) {
-      const errMessage =
-        e.message === 'Network Error'
-          ? 'Permintaan gagal.\nPastikan kamu terhubung dengan internet'
-          : 'Error tidak diketahui: ' + e.message;
+      const errMessage = e.message === 'Network Error'
+        ? 'Permintaan gagal.\nPastikan kamu terhubung dengan internet'
+        : 'Error tidak diketahui: ' + e.message;
       DialogManager.alert('Restore gagal!', errMessage);
     } finally {
       setModalVisible(false);
@@ -235,9 +227,7 @@ function Setting(_props: Props) {
       'Peringatan!!!',
       'Ini akan menghapus semua histori tontonan kamu.\nApakah kamu yakin ingin lanjut?',
       [
-        {
-          text: 'Batal',
-        },
+        { text: 'Batal' },
         {
           text: 'Lanjut dan hapus',
           onPress: async () => {
@@ -280,132 +270,154 @@ function Setting(_props: Props) {
       backgroundColor: theme.colors.elevation.level2,
       borderWidth: 0,
     },
-    itemTextStyle: {
-      color: theme.colors.onSurface,
-      fontSize: 13,
-    },
-    itemContainerStyle: {
-      backgroundColor: theme.colors.elevation.level2,
-    },
-    selectedTextStyle: {
-      color: theme.colors.onSurface,
-      fontSize: 13,
-    },
+    itemTextStyle: { color: theme.colors.onSurface, fontSize: 13 },
+    itemContainerStyle: { backgroundColor: theme.colors.elevation.level2 },
+    selectedTextStyle: { color: theme.colors.onSurface, fontSize: 13 },
   };
 
-  const settingsData: SettingsData[] = [
+  const groups: SettingsGroup[] = [
     {
-      title: 'Tema aplikasi',
-      description: 'Beralih ke tema gelap atau terang',
-      iconName: 'paint-brush',
-      rightComponent: (
-        <Dropdown
-          data={DROPDOWN_THEME_DATA}
-          onChange={data => {
-            if (data.value === 'light' || data.value === 'dark') {
-              Appearance.setColorScheme(data.value);
-            } else if (data.value === 'auto') {
-              Appearance.setColorScheme(undefined);
-            }
-            DatabaseManager.set('colorScheme', data.value);
-          }}
-          ref={appThemeDropdown}
-          value={appTheme}
-          labelField={'label'}
-          valueField={'value'}
-          maxHeight={300}
-          activeColor={theme.colors.primaryContainer}
-          placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
-          {...dropdownStyles}
-        />
-      ),
-      handler: () => {
-        appThemeDropdown.current?.open();
-      },
+      label: 'Tampilan',
+      items: [
+        {
+          title: 'Tema aplikasi',
+          description: 'Beralih ke tema gelap atau terang',
+          iconName: 'paint-brush',
+          rightComponent: (
+            <Dropdown
+              data={DROPDOWN_THEME_DATA}
+              onChange={data => {
+                if (data.value === 'light' || data.value === 'dark') {
+                  Appearance.setColorScheme(data.value);
+                } else if (data.value === 'auto') {
+                  Appearance.setColorScheme(undefined);
+                }
+                DatabaseManager.set('colorScheme', data.value);
+              }}
+              ref={appThemeDropdown}
+              value={appTheme}
+              labelField="label"
+              valueField="value"
+              maxHeight={300}
+              activeColor={theme.colors.primaryContainer}
+              placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
+              {...dropdownStyles}
+            />
+          ),
+          handler: () => appThemeDropdown.current?.open(),
+        },
+        {
+          title: 'Mode mixing audio',
+          description: 'Perilaku audio saat aplikasi lain memutar suara',
+          iconName: 'music',
+          rightComponent: (
+            <Dropdown
+              data={DROPDOWN_AUDIOMIXING_DATA}
+              onChange={data => DatabaseManager.set('audioMixingMode', data.value)}
+              ref={AMMDropdown}
+              value={audioMixingMode}
+              labelField="label"
+              valueField="value"
+              maxHeight={300}
+              activeColor={theme.colors.primaryContainer}
+              placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
+              {...dropdownStyles}
+            />
+          ),
+          handler: () => AMMDropdown.current?.open(),
+        },
+      ],
     },
     {
-      title: 'Mode mixing audio',
-      description: 'Tentukan perilaku audio saat aplikasi lain memutar suara',
-      iconName: 'music',
-      rightComponent: (
-        <Dropdown
-          data={DROPDOWN_AUDIOMIXING_DATA}
-          onChange={data => {
-            DatabaseManager.set('audioMixingMode', data.value);
-          }}
-          ref={AMMDropdown}
-          value={audioMixingMode}
-          labelField={'label'}
-          valueField={'value'}
-          maxHeight={300}
-          activeColor={theme.colors.primaryContainer}
-          placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
-          {...dropdownStyles}
-        />
-      ),
-      handler: () => {
-        AMMDropdown.current?.open();
-      },
+      label: 'Player',
+      items: [
+        {
+          title: 'Info baterai & waktu',
+          description: 'Tampilkan baterai dan jam saat layar penuh',
+          iconName: 'battery-3',
+          rightComponent: (
+            <Switch value={batteryTimeInfoSwitch} onValueChange={batteryTimeSwitchHandler} />
+          ),
+          handler: batteryTimeSwitchHandler,
+        },
+        {
+          title: 'Notifikasi & PiP',
+          description: 'Aktifkan notifikasi "Now Playing" dan Picture-in-Picture',
+          iconName: 'bell',
+          rightComponent: (
+            <Switch
+              value={nowPlayingNotificationSwitch}
+              onValueChange={nowPlayingNotificationSwitchHandler}
+            />
+          ),
+          handler: nowPlayingNotificationSwitchHandler,
+        },
+      ],
     },
     {
-      title: 'Info baterai & waktu',
-      description: 'Tampilkan persentase baterai dan jam saat mode layar penuh',
-      iconName: 'battery-3',
-      rightComponent: (
-        <Switch value={batteryTimeInfoSwitch} onValueChange={batteryTimeSwitchHandler} />
-      ),
-      handler: batteryTimeSwitchHandler,
+      label: 'Data',
+      items: [
+        {
+          title: 'Cadangkan data',
+          description: 'Simpan seluruh data aplikasi ke file',
+          iconName: 'cloud-upload',
+          handler: backupData,
+        },
+        {
+          title: 'Pulihkan data',
+          description: 'Kembalikan data dari file backup',
+          iconName: 'history',
+          handler: restoreData,
+        },
+        {
+          title: 'Hapus histori',
+          description: 'Hapus permanen semua riwayat tontonan',
+          iconName: 'trash',
+          iconColor: theme.colors.error,
+          danger: true,
+          handler: clearHistory,
+        },
+      ],
     },
     {
-      title: 'Notifikasi & PiP',
-      description: 'Aktifkan notifikasi "Now Playing" dan fitur Picture-in-Picture',
-      iconName: 'bell',
-      rightComponent: (
-        <Switch
-          value={nowPlayingNotificationSwitch}
-          onValueChange={nowPlayingNotificationSwitchHandler}
-        />
-      ),
-      handler: nowPlayingNotificationSwitchHandler,
-    },
-    {
-      title: 'Cadangkan data',
-      description: 'Simpan seluruh data aplikasi ke file',
-      iconName: 'cloud-upload',
-      handler: backupData,
-    },
-    {
-      title: 'Pulihkan data',
-      description: 'Kembalikan data aplikasi dari file backup',
-      iconName: 'history',
-      handler: restoreData,
-    },
-    {
-      title: 'Hapus histori',
-      description: 'Hapus permanen semua riwayat tontonan',
-      iconName: 'trash',
-      iconColor: theme.colors.error,
-      handler: clearHistory,
-    },
-    {
-      title: 'Muat ulang',
-      description: 'Restart aplikasi secara manual',
-      iconName: 'refresh',
-      handler: () => {
-        DialogManager.alert('Reload aplikasi', 'Aplikasi akan di muat ulang', [
-          {
-            text: 'Batal',
+      label: 'Lainnya',
+      items: [
+        {
+          title: 'Muat ulang',
+          description: 'Restart aplikasi secara manual',
+          iconName: 'refresh',
+          handler: () => {
+            DialogManager.alert('Reload aplikasi', 'Aplikasi akan di muat ulang', [
+              { text: 'Batal' },
+              {
+                text: 'Lanjut',
+                onPress: () => reloadAppAsync('setting.restart'),
+              },
+            ]);
           },
-          {
-            text: 'Lanjut',
-            onPress: () => {
-              reloadAppAsync('setting.restart');
-            },
-          },
-        ]);
-      },
+        },
+      ],
     },
-  ] as const;
+  ];
+
+  const styles = StyleSheet.create({
+    groupLabel: {
+      fontSize: 11,
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      color: theme.colors.primary,
+      paddingHorizontal: 16,
+      paddingTop: 24,
+      paddingBottom: 6,
+      textTransform: 'uppercase',
+    },
+    groupCard: {
+      marginHorizontal: 12,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: isDark ? theme.colors.elevation.level2 : theme.colors.surface,
+    },
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -421,64 +433,73 @@ function Setting(_props: Props) {
           }}>
           <ActivityIndicator size={24} style={{ marginBottom: 16 }} />
           <ReText
-            style={{
-              color: theme.colors.onSurface,
-              textAlign: 'center',
-              fontWeight: 'bold',
-            }}
+            style={{ color: theme.colors.onSurface, textAlign: 'center', fontWeight: 'bold' }}
             text={modalText}
           />
         </Modal>
       </Portal>
 
-      <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
-        {settingsData.map((item, index) => (
-          <Surface
-            key={item.title}
-            elevation={0}
-            style={{ backgroundColor: theme.colors.background }}>
-            <TouchableRipple
-              onPress={item.handler}
-              rippleColor={theme.colors.primaryContainer}
-              background={{ color: theme.colors.primaryContainer, foreground: true }}>
-              <View>
-                <List.Item
-                  title={item.title}
-                  description={item.description}
-                  titleStyle={{
-                    fontSize: 16,
-                    fontWeight: '500',
-                    color: item.iconColor || theme.colors.onSurface,
-                  }}
-                  descriptionStyle={{
-                    color: theme.colors.onSurfaceVariant,
-                    fontSize: 12,
-                    marginTop: 4,
-                  }}
-                  descriptionNumberOfLines={3}
-                  left={() => (
-                    <View style={{ justifyContent: 'center', paddingLeft: 8, paddingRight: 8 }}>
-                      <Icon
-                        name={item.iconName}
-                        size={20}
-                        color={item.iconColor || theme.colors.primary}
-                      />
-                    </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {groups.map(group => (
+          <View key={group.label}>
+            <Text style={styles.groupLabel}>{group.label}</Text>
+            <Surface style={styles.groupCard} elevation={1}>
+              {group.items.map((item, index) => (
+                <View key={item.title}>
+                  <TouchableRipple
+                    onPress={item.handler}
+                    rippleColor={item.danger ? theme.colors.errorContainer : theme.colors.primaryContainer}>
+                    <List.Item
+                      title={item.title}
+                      description={item.description}
+                      titleStyle={{
+                        fontSize: 15,
+                        fontWeight: '500',
+                        color: item.danger ? theme.colors.error : theme.colors.onSurface,
+                      }}
+                      descriptionStyle={{
+                        color: theme.colors.onSurfaceVariant,
+                        fontSize: 12,
+                        marginTop: 2,
+                      }}
+                      descriptionNumberOfLines={3}
+                      left={() => (
+                        <View style={{ justifyContent: 'center', paddingLeft: 8, paddingRight: 4 }}>
+                          <View style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            backgroundColor: item.danger
+                              ? theme.colors.errorContainer
+                              : theme.colors.secondaryContainer,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}>
+                            <Icon
+                              name={item.iconName}
+                              size={16}
+                              color={item.iconColor || theme.colors.primary}
+                            />
+                          </View>
+                        </View>
+                      )}
+                      right={() =>
+                        item.rightComponent ? (
+                          <View style={{ justifyContent: 'center', paddingRight: 4 }}>
+                            {item.rightComponent}
+                          </View>
+                        ) : null
+                      }
+                    />
+                  </TouchableRipple>
+                  {index < group.items.length - 1 && (
+                    <Divider style={{ marginLeft: 60 }} />
                   )}
-                  right={() =>
-                    item.rightComponent ? (
-                      <View style={{ justifyContent: 'center', paddingRight: 8 }}>
-                        {item.rightComponent}
-                      </View>
-                    ) : null
-                  }
-                />
-                {index < settingsData.length - 1 && <Divider style={{ marginLeft: 56 }} />}
-              </View>
-            </TouchableRipple>
-          </Surface>
+                </View>
+              ))}
+            </Surface>
+          </View>
         ))}
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
