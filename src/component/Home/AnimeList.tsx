@@ -23,6 +23,7 @@ import React, {
 import {
   Animated,
   Dimensions,
+  Image, 
   ScrollView as RNScrollView,
   ScrollViewProps,
   StyleSheet,
@@ -323,21 +324,12 @@ function HomeList(props: HomeProps) {
           <Announcment />
           {/* Header - langsung pakai Cinzel tanpa cek fontsLoaded */}
           <View style={styles.header}>
-            <MaskedView
-              maskElement={
-                <Text style={[styles.headerTitle, { fontFamily: 'Cinzel_700Bold', backgroundColor: 'transparent' }]}>
-                  Lunar
-                </Text>
-              }>
-              <LinearGradient
-                colors={['#A855F7', '#6366F1']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ height: 42 }}
-              />
-            </MaskedView>
-          </View>
-
+           <Image
+            source={require('@assets/lunar-logo.png')}
+            style={{ height: 42, width: 210 }}
+            resizeMode="contain"
+            />
+           </View>
           {/* Banner Carousel */}
           {filmHomepageData.featured.length > 0 && (
             <BannerCarousel data={filmHomepageData.featured} navigation={props.navigation} />
