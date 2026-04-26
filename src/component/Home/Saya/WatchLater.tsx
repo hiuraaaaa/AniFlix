@@ -21,6 +21,8 @@ type Props = DrawerScreenProps<SayaDrawerNavigator, 'WatchLater'>;
 function WatchLater(props: Props) {
   const styles = useStyles();
   const globalStyles = useGlobalStyles();
+  const theme = useTheme();
+  const isDark = theme.dark;
 
   const watchLaterLists = useModifiedKeyValueIfFocused<watchLaterJSON[]>(
     'watchLater',
@@ -31,12 +33,20 @@ function WatchLater(props: Props) {
 
   const renderItem = useCallback<ListRenderItem<watchLaterJSON>>(
     ({ item, index }) => {
+      // Badge config
+      const badgeConfig =
+        item.rating === 'Film'
+          ? { label: 'Film', color: '#E64A19', icon: 'movie-open' }
+          : item.isComics
+            ? { label: 'Komik', color: '#0288D1', icon: 'book-open-variant' }
+            : item.rating
+              ? { label: item.rating, color: '#F59E0B', icon: 'star' }
+              : null;
+
       return (
         <TouchableOpacity
-          // entering={FadeInRight}
-          // exiting={FadeOutLeft}
-          // layout={LinearTransition}
-          style={styles.listContainer}
+          style={styles.card}
+          activeOpacity={0.75}
           onPress={() => {
             props.navigation.dispatch(
               StackActions.push('FromUrl', {
@@ -52,88 +62,75 @@ function WatchLater(props: Props) {
               }),
             );
           }}>
-          <ImageLoading source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} />
-          <View style={styles.ratingContainer}>
-            <Text
-              style={[
-                globalStyles.text,
-                styles.listRatingText,
-                item.rating === 'Film'
-                  ? { backgroundColor: '#ff5252' }
-                  : item.isComics
-                    ? { backgroundColor: '#3e8bff' }
-                    : undefined,
-              ]}>
-              <Icon name={item.rating === 'Film' ? 'movie' : item.isComics ? 'book' : 'star'} />{' '}
-              {item.rating}
-            </Text>
-          </View>
-          <View style={styles.listInfoContainer}>
-            <Text style={[globalStyles.text, styles.listDateText]}>
-              {moment(item.date).format('dddd DD-MM-YYYY [Pukul] HH:mm')}
-            </Text>
-
-            <View style={styles.titleContainer}>
-              <Text style={[globalStyles.text]}>{item.title}</Text>
-            </View>
-
-            <View style={styles.listBottom}>
-              <View style={styles.listGenreContainer}>
-                <Text style={styles.listGenreText} numberOfLines={1}>
-                  {item.genre.toString()}
-                </Text>
+          {/* Thumbnail */}
+          <View style={styles.thumbnailWrapper}>
+            <ImageLoading source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+            {badgeConfig && (
+              <View style={[styles.thumbnailBadge, { backgroundColor: badgeConfig.color }]}>
+                <Icon name={badgeConfig.icon} size={10} color="#fff" />
+                <Text style={styles.thumbnailBadgeText}>{badgeConfig.label}</Text>
               </View>
+            )}
+          </View>
+
+          {/* Info */}
+          <View style={styles.infoContainer}>
+            {/* Tanggal + Hapus */}
+            <View style={styles.topRow}>
+              <Text style={styles.dateText} numberOfLines={1}>
+                {moment(item.date).format('dddd DD-MM-YYYY [Pukul] HH:mm')}
+              </Text>
               <TouchableOpacity
-                hitSlop={4}
+                hitSlop={6}
+                style={styles.deleteButton}
                 onPress={() => {
                   DialogManager.alert(
-                    'Hapus daftar tonton nanti',
+                    'Hapus Tonton Nanti',
                     `Apakah kamu yakin ingin menghapus "${item.title}" dari daftar tonton nanti?`,
                     [
-                      {
-                        text: 'Batal',
-                        onPress: () => {},
-                      },
-                      {
-                        text: 'Hapus',
-                        onPress: () => {
-                          controlWatchLater('delete', index);
-                        },
-                      },
+                      { text: 'Batal', onPress: () => {} },
+                      { text: 'Hapus', onPress: () => controlWatchLater('delete', index) },
                     ],
                   );
-                }}
-                style={styles.listDeleteContainer}>
-                <Icon name="delete-forever" size={20} style={styles.listDeleteIcon} />
+                }}>
+                <Icon name="delete-forever" size={20} style={styles.deleteIcon} />
               </TouchableOpacity>
+            </View>
+
+            {/* Judul */}
+            <Text style={[globalStyles.text, styles.title]} numberOfLines={2}>
+              {item.title}
+            </Text>
+
+            {/* Genre */}
+            <View style={styles.genreContainer}>
+              {item.genre
+                .toString()
+                .split(',')
+                .slice(0, 3)
+                .map((g, i) => (
+                  <View key={i} style={styles.genrePill}>
+                    <Text style={styles.genrePillText} numberOfLines={1}>
+                      {g.trim()}
+                    </Text>
+                  </View>
+                ))}
             </View>
           </View>
         </TouchableOpacity>
       );
     },
-    [
-      globalStyles.text,
-      props.navigation,
-      styles.listBottom,
-      styles.listContainer,
-      styles.listDateText,
-      styles.listDeleteContainer,
-      styles.listDeleteIcon,
-      styles.listGenreContainer,
-      styles.listGenreText,
-      styles.listInfoContainer,
-      styles.listRatingText,
-      styles.ratingContainer,
-      styles.thumbnail,
-      styles.titleContainer,
-    ],
+    [globalStyles.text, props.navigation, styles],
   );
 
   return (
     <View style={{ flex: 1 }}>
       {watchLaterLists.length === 0 ? (
         <View style={styles.emptyList}>
-          <Text style={[globalStyles.text]}>Belum ada daftar tonton nanti</Text>
+          <Icon name="bookmark-outline" size={48} color={globalStyles.text.color + '44'} />
+          <Text style={[globalStyles.text, { marginTop: 12, opacity: 0.5 }]}>
+            Belum ada daftar tonton nanti
+          </Text>
         </View>
       ) : (
         <FlashList
@@ -143,19 +140,16 @@ function WatchLater(props: Props) {
           extraData={styles}
           renderItem={renderItem}
           keyExtractor={extractKey}
+          estimatedItemSize={120}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 16 }}
           ListHeaderComponent={() => (
-            <View>
-              <Text style={[globalStyles.text, { margin: 10 }]}>
-                Jumlah daftar tonton nanti kamu:{' '}
+            <View style={{ paddingVertical: 10 }}>
+              <Text style={[globalStyles.text, styles.countText]}>
+                Daftar tonton nanti:{' '}
                 <Text style={{ fontWeight: 'bold' }}>{watchLaterLists.length}</Text>
-                {'\n'}
-                <Text
-                  style={[
-                    globalStyles.text,
-                    { margin: 10, fontWeight: 'bold', fontSize: 12, color: 'gray' },
-                  ]}>
-                  Sejak {moment(watchLaterLists.at(-1)!.date).format('DD MMMM YYYY')}
-                </Text>
+              </Text>
+              <Text style={styles.sinceText}>
+                Sejak {moment(watchLaterLists.at(-1)!.date).format('DD MMMM YYYY')}
               </Text>
             </View>
           )}
@@ -169,83 +163,111 @@ const extractKey = (item: watchLaterJSON) => item.date.toString();
 
 function useStyles() {
   const theme = useTheme();
+  const isDark = theme.dark;
+
   return useMemo(
     () =>
       StyleSheet.create({
-        listContainer: {
+        countText: {
+          fontSize: 13,
+          opacity: 0.7,
+        },
+        sinceText: {
+          fontSize: 12,
+          color: isDark ? '#888' : '#999',
+          marginTop: 2,
+        },
+        // Card
+        card: {
           flexDirection: 'row',
           marginVertical: 5,
           backgroundColor: theme.colors.surface,
-          borderWidth: 0.2,
-          borderColor: theme.colors.onSurfaceVariant,
-          borderRadius: 16,
-          elevation: 5,
-          height: 160,
+          borderRadius: 14,
+          elevation: 3,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
           overflow: 'hidden',
+          borderWidth: 0.5,
+          borderColor: isDark ? '#2a2a2a' : '#e8e8e8',
         },
-        listInfoContainer: {
-          flex: 1,
-          flexDirection: 'column',
+        thumbnailWrapper: {
+          position: 'relative',
         },
         thumbnail: {
-          height: 160,
-          width: 80,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
-          marginRight: 7,
+          width: 85,
+          height: 120,
         },
-        ratingContainer: {
+        thumbnailBadge: {
           position: 'absolute',
-          left: 3,
-          top: 0,
-        },
-        listRatingText: {
-          backgroundColor: 'orange',
-          color: 'black',
-          padding: 3,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16,
-          borderTopRightRadius: 16,
-          fontWeight: '600',
-        },
-        titleContainer: {
+          bottom: 0,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          alignItems: 'center',
           justifyContent: 'center',
+          gap: 3,
+          paddingVertical: 3,
+        },
+        thumbnailBadgeText: {
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: 'bold',
+        },
+        infoContainer: {
+          flex: 1,
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+          justifyContent: 'space-between',
+        },
+        topRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        },
+        dateText: {
+          fontSize: 11,
+          color: isDark ? '#888' : '#999',
           flex: 1,
         },
-        listGenreText: {
-          color: theme.colors.onSecondaryContainer,
-          fontWeight: 'bold',
+        deleteButton: {
+          backgroundColor: theme.colors.errorContainer,
+          borderRadius: 8,
+          padding: 4,
+        },
+        deleteIcon: {
+          color: theme.colors.onErrorContainer,
+        },
+        title: {
+          fontSize: 13,
+          fontWeight: '600',
+          lineHeight: 18,
+          flex: 1,
+        },
+        genreContainer: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 4,
+        },
+        genrePill: {
+          backgroundColor: isDark ? '#1e2a3a' : '#e8f0fe',
+          borderRadius: 20,
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+        },
+        genrePillText: {
+          fontSize: 10,
+          fontWeight: '600',
+          color: isDark ? '#90caf9' : '#1565c0',
         },
         emptyList: {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
         },
-        listBottom: {
-          flexDirection: 'row',
-        },
-        listGenreContainer: {
-          justifyContent: 'flex-start',
-          flex: 1,
-        },
-        listDateText: {
-          color: 'gray',
-          fontSize: 12,
-          fontWeight: '500',
-        },
-        listDeleteContainer: {
-          justifyContent: 'flex-end',
-          backgroundColor: theme.colors.errorContainer,
-          borderRadius: 5,
-          padding: 3,
-          marginHorizontal: 2,
-        },
-        listDeleteIcon: {
-          color: theme.colors.onErrorContainer,
-        },
       }),
-    [theme],
+    [theme, isDark],
   );
 }
 
