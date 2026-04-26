@@ -9,7 +9,6 @@ import {
 } from '@react-navigation/native';
 import { FlashList, ListRenderItemInfo, useMappingHelper } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import MaskedView from '@react-native-masked-view/masked-view';
 import React, {
   memo,
@@ -22,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Animated,
   Dimensions,
   ScrollView as RNScrollView,
   ScrollViewProps,
@@ -66,24 +66,46 @@ type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
 const Home = memo(HomeList);
 export default Home;
 
-// Banner Carousel
+// Banner Carousel dengan blur + smooth transition
 function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: HomeProps['navigation'] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<RNScrollView>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const items = data.slice(0, 8);
+  const isScrolling = useRef(false);
 
-  // Auto scroll
+  const goToIndex = useCallback((next: number) => {
+    if (isScrolling.current) return;
+    isScrolling.current = true;
+
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveIndex(next);
+      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(() => {
+        isScrolling.current = false;
+      });
+    });
+  }, [fadeAnim]);
+
   useEffect(() => {
     if (items.length === 0) return;
     const interval = setInterval(() => {
       const next = (activeIndex + 1) % items.length;
-      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
-      setActiveIndex(next);
-    }, 4000);
+      goToIndex(next);
+    }, 4500);
     return () => clearInterval(interval);
-  }, [activeIndex, items.length]);
+  }, [activeIndex, items.length, goToIndex]);
 
   if (items.length === 0) return null;
 
@@ -97,15 +119,28 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onScroll={e => {
+          onMomentumScrollEnd={e => {
             const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            setActiveIndex(idx);
+            if (idx !== activeIndex) {
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: true,
+              }).start(() => {
+                setActiveIndex(idx);
+                Animated.timing(fadeAnim, {
+                  toValue: 1,
+                  duration: 350,
+                  useNativeDriver: true,
+                }).start();
+              });
+            }
           }}
           scrollEventThrottle={16}>
           {items.map((item, i) => (
             <TouchableOpacity
               key={i}
-              style={{ width: SCREEN_WIDTH, height: 220 }}
+              style={{ width: SCREEN_WIDTH, height: 240 }}
               onPress={() => {
                 navigation.dispatch(StackActions.push('FromUrl', { title: item.title, link: item.url, type: 'film' }));
               }}>
@@ -114,16 +149,16 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="cover">
                 <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.95)']}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 }}
+                  colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.97)']}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 180 }}
                 />
               </ImageLoading>
             </TouchableOpacity>
           ))}
         </RNScrollView>
 
-        {/* Overlay info di bawah banner */}
-        <View style={{
+        {/* Overlay info dengan fade animation */}
+        <Animated.View style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
@@ -132,6 +167,7 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
           flexDirection: 'row',
           alignItems: 'flex-end',
           gap: 10,
+          opacity: fadeAnim,
         }}>
           {/* Poster kecil */}
           <ImageLoading
@@ -141,7 +177,7 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
               height: 100,
               borderRadius: 8,
               borderWidth: 2,
-              borderColor: 'rgba(255,255,255,0.3)',
+              borderColor: 'rgba(255,255,255,0.25)',
             }}
             resizeMode="cover"
           />
@@ -184,7 +220,7 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
               <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Tonton</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </View>
 
       {/* Dots */}
@@ -213,7 +249,8 @@ function HomeList(props: HomeProps) {
   const [refresh, setRefresh] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
 
-  const [fontsLoaded] = useFonts({ Cinzel_700Bold });
+  // Hapus useFonts di sini — sudah di-load di App.tsx
+  // Font Cinzel_700Bold sudah pasti tersedia saat screen ini render
 
   const refreshing = useCallback(() => {
     setRefresh(true);
@@ -284,25 +321,21 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
-          {/* Header */}
+          {/* Header - langsung pakai Cinzel tanpa cek fontsLoaded */}
           <View style={styles.header}>
-            {fontsLoaded ? (
-              <MaskedView
-                maskElement={
-                  <Text style={[styles.headerTitle, { fontFamily: 'Cinzel_700Bold', backgroundColor: 'transparent' }]}>
-                    Lunar
-                  </Text>
-                }>
-                <LinearGradient
-                  colors={['#A855F7', '#6366F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{ height: 42 }}
-                />
-              </MaskedView>
-            ) : (
-              <Text style={styles.headerTitle}>Lunar</Text>
-            )}
+            <MaskedView
+              maskElement={
+                <Text style={[styles.headerTitle, { fontFamily: 'Cinzel_700Bold', backgroundColor: 'transparent' }]}>
+                  Lunar
+                </Text>
+              }>
+              <LinearGradient
+                colors={['#A855F7', '#6366F1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ height: 42 }}
+              />
+            </MaskedView>
           </View>
 
           {/* Banner Carousel */}
@@ -310,7 +343,7 @@ function HomeList(props: HomeProps) {
             <BannerCarousel data={filmHomepageData.featured} navigation={props.navigation} />
           )}
 
-          {/* Episode Terbaru - horizontal scroll */}
+          {/* Episode Terbaru */}
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
@@ -354,7 +387,7 @@ function HomeList(props: HomeProps) {
   );
 }
 
-// Episode Terbaru - horizontal scroll (was ON-GOING grid)
+// Episode Terbaru
 const EpisodeBaru = memo(
   EpisodeBaruUNMEMO,
   (prev, next) =>
