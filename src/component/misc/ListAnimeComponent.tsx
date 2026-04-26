@@ -65,22 +65,32 @@ export function ListAnimeComponent(
 
   const iconName = props.type === 'movie' ? 'check' : props.type === 'comics' ? 'book' : 'calendar';
 
+  // Badge color per type
+  const badgeBg = useMemo(() => {
+    if (props.type === 'movie') return 'rgba(76,175,80,0.85)';
+    if (props.type === 'comics') return 'rgba(255,152,0,0.85)';
+    if (props.type === 'film') return 'rgba(33,150,243,0.85)';
+    return 'rgba(168,85,247,0.85)'; // anime default — ungu
+  }, [props.type]);
+
   if (props.gridMode) {
     return (
       <TouchableOpacity style={styles.gridCard} onPress={navigateToItem}>
         <ImageLoading resizeMode="cover" source={{ uri: z.thumbnailUrl }} style={styles.gridImage}>
           <View style={styles.topRow}>
-            <View style={styles.episodeBadge}>
+            <View style={[styles.episodeBadge, { backgroundColor: badgeBg }]}>
               <Text style={styles.badgeText}>{episodeOrChapter}</Text>
             </View>
-            {'rating' in z && (
+            {'rating' in z && z.rating && (
               <View style={styles.ratingBadge}>
                 <Icon name="star" size={9} color="#FFD700" />
                 <Text style={styles.badgeText}> {z.rating}</Text>
               </View>
             )}
           </View>
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.88)']} style={styles.gradient}>
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.95)']}
+            style={styles.gradient}>
             <Text numberOfLines={2} style={styles.gridTitle}>{z.title}</Text>
             <Text style={styles.subText}>
               <Icon name={iconName} size={9} color={theme.colors.primary} /> {releaseDay}
@@ -97,17 +107,19 @@ export function ListAnimeComponent(
       onPress={navigateToItem}>
       <ImageLoading resizeMode="cover" source={{ uri: z.thumbnailUrl }} style={styles.listImage}>
         <View style={styles.topRow}>
-          <View style={styles.episodeBadge}>
+          <View style={[styles.episodeBadge, { backgroundColor: badgeBg }]}>
             <Text style={styles.badgeText}>{episodeOrChapter}</Text>
           </View>
-          {'rating' in z && (
+          {'rating' in z && z.rating && (
             <View style={styles.ratingBadge}>
               <Icon name="star" size={9} color="#FFD700" />
               <Text style={styles.badgeText}> {z.rating}</Text>
             </View>
           )}
         </View>
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.88)']} style={styles.gradient}>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.95)']}
+          style={styles.gradient}>
           <Text numberOfLines={1} style={styles.listTitle}>{z.title}</Text>
           <Text style={styles.subText}>
             <Icon name={iconName} size={9} color={theme.colors.primary} /> {releaseDay}
@@ -133,9 +145,13 @@ function useStyles() {
         gridCard: {
           width: GRID_W,
           height: GRID_H,
-          borderRadius: 8,
+          borderRadius: 12,
           overflow: 'hidden',
-          elevation: 3,
+          elevation: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.35,
+          shadowRadius: 6,
         },
         gridImage: {
           width: '100%',
@@ -149,9 +165,13 @@ function useStyles() {
           lineHeight: 15,
         },
         listCard: {
-          borderRadius: 8,
+          borderRadius: 12,
           overflow: 'hidden',
-          elevation: 3,
+          elevation: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.35,
+          shadowRadius: 6,
           width: LIST_W,
         },
         listImage: {
@@ -172,7 +192,7 @@ function useStyles() {
         gradient: {
           paddingHorizontal: 6,
           paddingBottom: 6,
-          paddingTop: 14,
+          paddingTop: 20,
         },
         subText: {
           color: '#bbb',
@@ -180,8 +200,7 @@ function useStyles() {
           marginTop: 2,
         },
         episodeBadge: {
-          backgroundColor: 'rgba(0,0,0,0.72)',
-          paddingHorizontal: 5,
+          paddingHorizontal: 6,
           paddingVertical: 2,
           borderRadius: 4,
         },
