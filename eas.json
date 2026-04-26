@@ -15,7 +15,10 @@
     },
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "cache": {
+          "disabled": true
+        }
       }
     }
   }
