@@ -11,9 +11,10 @@ import {
   View,
   useColorScheme,
   useWindowDimensions,
+  TextInput,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Button, Chip, Divider, Searchbar, useTheme } from 'react-native-paper';
+import { Button, Chip, Divider, useTheme } from 'react-native-paper';
 import Reanimated, {
   interpolate,
   useAnimatedRef,
@@ -134,9 +135,11 @@ function AniDetail(props: Props) {
         maintainVisibleContentPosition={{ disabled: true }}
         ref={scrollRef}
         data={filteredEpisodes}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <RenderEpisodeItem
             item={item}
+            index={index}
+            totalEps={data.episodeList.length}
             lastWatched={lastWatched}
             navigation={props.navigation}
             routeTitle={data.title}
@@ -376,13 +379,24 @@ const AniDetailHeader = memo(
             <Text style={styles.sectionTitle}>Daftar Episode</Text>
             <Text style={styles.episodeCount}>{data.episodeList.length}/{data.epsTotal} Episode</Text>
           </View>
-          <Searchbar
-            keyboardType="number-pad"
-            placeholder="Cari Episode"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchbar}
-          />
+
+          {/* Custom Search Bar */}
+          <View style={styles.searchContainer}>
+            <Icon name="search" size={13} color="#888" />
+            <TextInput
+              keyboardType="number-pad"
+              placeholder="Cari nomor episode..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Icon name="times-circle" size={13} color="#888" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -391,18 +405,26 @@ const AniDetailHeader = memo(
 
 interface RenderEpisodeItemProps {
   item: AniDetailEpsList;
+  index: number;
+  totalEps: number;
   lastWatched: HistoryJSON | undefined;
   navigation: Props['navigation'];
   routeTitle: string;
 }
 
 const RenderEpisodeItem = memo(
-  ({ item, lastWatched, navigation, routeTitle }: RenderEpisodeItemProps) => {
+  ({ item, index, totalEps, lastWatched, navigation, routeTitle }: RenderEpisodeItemProps) => {
     const styles = useStyles();
     const theme = useTheme();
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     const isLastWatched =
       lastWatched && lastWatched.episode && item.title.includes(lastWatched?.episode);
+
+    const epMatch = item.title.match(/Episode\s+(\d+)/i);
+    const epNumber = epMatch ? epMatch[1] : String(totalEps - index);
+    const cleanTitle = item.title.replace(/Subtitle Indonesia|Sub Indo/, '').trim();
 
     return (
       <TouchableOpacity
@@ -419,23 +441,46 @@ const RenderEpisodeItem = memo(
               : undefined,
           });
         }}>
+
+        {/* Episode Number Badge */}
+        <View style={[
+          styles.epNumberBadge,
+          isLastWatched && { backgroundColor: theme.colors.primary }
+        ]}>
+          <Text style={[
+            styles.epNumberText,
+            isLastWatched && { color: '#fff' }
+          ]}>
+            {epNumber}
+          </Text>
+        </View>
+
+        {/* Episode Info */}
         <View style={styles.episodeTitleContainer}>
           <Text
             style={[
               styles.episodeText,
               isLastWatched && { color: theme.colors.primary },
-            ]}>
-            {item.title.replace(/Subtitle Indonesia|Sub Indo/, '').trim()}
+            ]}
+            numberOfLines={1}>
+            {cleanTitle}
           </Text>
           {isLastWatched && (
             <Text style={styles.lastWatchedTag}>● Terakhir Ditonton</Text>
           )}
         </View>
-        <Icon
-          name={isLastWatched ? 'history' : 'play-circle'}
-          size={20}
-          color={isLastWatched ? theme.colors.primary : '#888'}
-        />
+
+        {/* Play Button */}
+        <View style={[
+          styles.playButton,
+          isLastWatched && { backgroundColor: theme.colors.primaryContainer }
+        ]}>
+          <Icon
+            name={isLastWatched ? 'history' : 'play'}
+            size={13}
+            color={isLastWatched ? theme.colors.primary : isDark ? '#aaa' : '#666'}
+          />
+        </View>
       </TouchableOpacity>
     );
   },
@@ -579,14 +624,28 @@ function useStyles() {
           fontSize: 13,
           color: isDark ? '#888' : '#999',
         },
-        searchbar: {
+        searchContainer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: isDark ? '#1e1e1e' : '#e0e0e0',
           borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
           marginBottom: 4,
+          gap: 8,
+          borderWidth: 1,
+          borderColor: isDark ? '#2e2e2e' : '#ccc',
+        },
+        searchInput: {
+          flex: 1,
+          fontSize: 13,
+          color: isDark ? '#e0e0e0' : '#333',
+          padding: 0,
         },
         episodeButton: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 14,
+          paddingVertical: 12,
           paddingHorizontal: 16,
           backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
           gap: 12,
@@ -594,11 +653,24 @@ function useStyles() {
         lastWatchedButton: {
           backgroundColor: isDark ? '#1a2a1a' : '#f0fff0',
         },
+        epNumberBadge: {
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        epNumberText: {
+          fontSize: 13,
+          fontWeight: 'bold',
+          color: isDark ? '#ccc' : '#555',
+        },
         episodeTitleContainer: {
           flex: 1,
         },
         episodeText: {
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: '600',
           color: isDark ? '#e0e0e0' : '#333',
         },
@@ -607,6 +679,14 @@ function useStyles() {
           fontWeight: 'bold',
           color: theme.colors.primary,
           marginTop: 2,
+        },
+        playButton: {
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         lastWatchedTextColor: {
           color: theme.colors.onPrimaryContainer,
@@ -625,6 +705,7 @@ function useStyles() {
       theme.colors.onSecondaryContainer,
       theme.colors.secondaryContainer,
       theme.colors.primary,
+      theme.colors.primaryContainer,
     ],
   );
 }
