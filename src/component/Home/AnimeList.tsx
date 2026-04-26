@@ -9,6 +9,8 @@ import {
 } from '@react-navigation/native';
 import { FlashList, ListRenderItemInfo, useMappingHelper } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
+import MaskedView from '@react-native-masked-view/masked-view';
 import React, {
   memo,
   use,
@@ -72,50 +74,128 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
   const isDark = useColorScheme() === 'dark';
   const items = data.slice(0, 8);
 
+  // Auto scroll
+  useEffect(() => {
+    if (items.length === 0) return;
+    const interval = setInterval(() => {
+      const next = (activeIndex + 1) % items.length;
+      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+      setActiveIndex(next);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activeIndex, items.length]);
+
   if (items.length === 0) return null;
+
+  const currentItem = items[activeIndex];
 
   return (
     <View style={{ marginBottom: 16 }}>
-      <RNScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={e => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-          setActiveIndex(idx);
-        }}
-        scrollEventThrottle={16}>
-        {items.map((item, i) => (
-          <TouchableOpacity
-            key={i}
-            style={{ width: SCREEN_WIDTH, height: 200 }}
-            onPress={() => {
-              navigation.dispatch(StackActions.push('FromUrl', { title: item.title, link: item.url, type: 'film' }));
-            }}>
-            <ImageLoading source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover">
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, justifyContent: 'flex-end', padding: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>UNGGULAN</Text>
-                  </View>
-                  {'rating' in item && item.rating && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <MaterialIcon name="star" size={12} color="#FFD700" />
-                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{item.rating}</Text>
-                    </View>
-                  )}
+      <View style={{ position: 'relative' }}>
+        <RNScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={e => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+            setActiveIndex(idx);
+          }}
+          scrollEventThrottle={16}>
+          {items.map((item, i) => (
+            <TouchableOpacity
+              key={i}
+              style={{ width: SCREEN_WIDTH, height: 220 }}
+              onPress={() => {
+                navigation.dispatch(StackActions.push('FromUrl', { title: item.title, link: item.url, type: 'film' }));
+              }}>
+              <ImageLoading
+                source={{ uri: item.thumbnailUrl }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover">
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.95)']}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 }}
+                />
+              </ImageLoading>
+            </TouchableOpacity>
+          ))}
+        </RNScrollView>
+
+        {/* Overlay info di bawah banner */}
+        <View style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: 12,
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          gap: 10,
+        }}>
+          {/* Poster kecil */}
+          <ImageLoading
+            source={{ uri: currentItem?.thumbnailUrl }}
+            style={{
+              width: 70,
+              height: 100,
+              borderRadius: 8,
+              borderWidth: 2,
+              borderColor: 'rgba(255,255,255,0.3)',
+            }}
+            resizeMode="cover"
+          />
+
+          {/* Info */}
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>UNGGULAN</Text>
+              </View>
+              {'rating' in currentItem && currentItem.rating && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <MaterialIcon name="star" size={12} color="#FFD700" />
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{currentItem.rating}</Text>
                 </View>
-                <Text numberOfLines={2} style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', lineHeight: 20 }}>{item.title}</Text>
-              </LinearGradient>
-            </ImageLoading>
-          </TouchableOpacity>
-        ))}
-      </RNScrollView>
+              )}
+            </View>
+            <Text numberOfLines={2} style={{ color: '#fff', fontSize: 15, fontWeight: 'bold', lineHeight: 20 }}>
+              {currentItem?.title}
+            </Text>
+            {'synopsis' in currentItem && currentItem.synopsis ? (
+              <Text numberOfLines={2} style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, lineHeight: 16 }}>
+                {currentItem.synopsis}
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => navigation.dispatch(StackActions.push('FromUrl', { title: currentItem?.title, link: currentItem?.url, type: 'film' }))}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: theme.colors.primary,
+                alignSelf: 'flex-start',
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: 20,
+                marginTop: 2,
+              }}>
+              <MaterialIcon name="play-arrow" size={14} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Tonton</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
       {/* Dots */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 }}>
         {items.map((_, i) => (
-          <View key={i} style={{ width: i === activeIndex ? 16 : 6, height: 4, borderRadius: 2, backgroundColor: i === activeIndex ? theme.colors.primary : isDark ? '#444' : '#ccc' }} />
+          <View key={i} style={{
+            width: i === activeIndex ? 16 : 6,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: i === activeIndex ? theme.colors.primary : isDark ? '#444' : '#ccc',
+          }} />
         ))}
       </View>
     </View>
@@ -132,6 +212,8 @@ function HomeList(props: HomeProps) {
   const { paramsState: data, setParamsState: setData } = useContext(EpisodeBaruHomeContext);
   const [refresh, setRefresh] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
+
+  const [fontsLoaded] = useFonts({ Cinzel_700Bold });
 
   const refreshing = useCallback(() => {
     setRefresh(true);
@@ -204,7 +286,23 @@ function HomeList(props: HomeProps) {
           <Announcment />
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Lunar</Text>
+            {fontsLoaded ? (
+              <MaskedView
+                maskElement={
+                  <Text style={[styles.headerTitle, { fontFamily: 'Cinzel_700Bold', backgroundColor: 'transparent' }]}>
+                    Lunar
+                  </Text>
+                }>
+                <LinearGradient
+                  colors={['#A855F7', '#6366F1']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ height: 42 }}
+                />
+              </MaskedView>
+            ) : (
+              <Text style={styles.headerTitle}>Lunar</Text>
+            )}
           </View>
 
           {/* Banner Carousel */}
@@ -212,7 +310,7 @@ function HomeList(props: HomeProps) {
             <BannerCarousel data={filmHomepageData.featured} navigation={props.navigation} />
           )}
 
-          {/* Anime Terbaru - Grid 3 kolom */}
+          {/* Episode Terbaru - horizontal scroll */}
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
@@ -221,7 +319,7 @@ function HomeList(props: HomeProps) {
             props={props}
           />
 
-          {/* Film Unggulan - horizontal scroll */}
+          {/* Film Unggulan */}
           <FeaturedFilmList
             data={filmHomepageData.featured}
             isError={isFilmError}
@@ -256,7 +354,7 @@ function HomeList(props: HomeProps) {
   );
 }
 
-// Grid section for anime
+// Episode Terbaru - horizontal scroll (was ON-GOING grid)
 const EpisodeBaru = memo(
   EpisodeBaruUNMEMO,
   (prev, next) =>
@@ -276,11 +374,13 @@ function EpisodeBaruUNMEMO({
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
   const dimensions = useWindowDimensions();
+  const LIST_W = dimensions.width * 0.32;
+  const LIST_H = LIST_W * 1.45;
 
   const renderNewAnime = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
-        gridMode
+        gap
         newAnimeData={item}
         key={'btn' + item.title + item.episode}
         navigationProp={props.navigation}
@@ -292,7 +392,7 @@ function EpisodeBaruUNMEMO({
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>ON-GOING</Text>
+        <Text style={styles.sectionTitle}>EPISODE TERBARU</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }))}>
@@ -300,18 +400,18 @@ function EpisodeBaruUNMEMO({
         </TouchableOpacity>
       </View>
       {(data?.newAnime.length || 0) > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 2 }}>
-          {(data?.newAnime ?? []).slice(0, 9).map(item => (
-            <ListAnimeComponent
-              gridMode
-              newAnimeData={item}
-              key={'grid' + item.title + item.episode}
-              navigationProp={props.navigation}
-            />
-          ))}
-        </View>
+        <FlashList
+          renderScrollComponent={RenderScrollComponent}
+          contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }}
+          horizontal
+          data={data?.newAnime ?? []}
+          renderItem={renderNewAnime}
+          keyExtractor={z => 'episode' + z.title + z.episode}
+          extraData={styles}
+          showsHorizontalScrollIndicator={false}
+        />
       ) : isRefreshing ? (
-        <ShowSkeletonLoading grid />
+        <ShowSkeletonLoading />
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 }}>
           <MaterialIcon name="error-outline" size={20} color="#d80000" />
@@ -322,7 +422,6 @@ function EpisodeBaruUNMEMO({
   );
 }
 
-// Horizontal scroll sections
 const FeaturedFilmList = memo(FeaturedFilmListUNMEMO);
 function FeaturedFilmListUNMEMO({ props, data, isError }: { props: HomeProps; data: FilmHomePage; isError: boolean }) {
   const styles = useStyles();
@@ -520,20 +619,8 @@ function ComicListUNMEMO() {
 
 function ShowSkeletonLoading({ grid }: { grid?: boolean }) {
   const dimensions = useWindowDimensions();
-  const GRID_W = (dimensions.width - 8) / 3;
-  const GRID_H = GRID_W * 1.5;
   const LIST_W = dimensions.width * 0.32;
   const LIST_H = LIST_W * 1.45;
-
-  if (grid) {
-    return (
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 2 }}>
-        {[1, 2, 3, 4, 5, 6].map((_, i) => (
-          <Skeleton key={i} width={GRID_W} height={GRID_H} style={{ borderRadius: 8 }} />
-        ))}
-      </View>
-    );
-  }
   return (
     <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 4 }}>
       {[1, 2, 3].map((_, i) => (
@@ -586,10 +673,10 @@ function useStyles() {
           paddingBottom: 8,
         },
         headerTitle: {
-          fontSize: 30,
+          fontSize: 32,
           fontWeight: 'bold',
           color: isDark ? '#fff' : '#111',
-          letterSpacing: 0.5,
+          letterSpacing: 2,
         },
         sectionContainer: {
           paddingVertical: 10,
