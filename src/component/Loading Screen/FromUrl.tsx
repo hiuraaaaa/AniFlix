@@ -5,7 +5,6 @@ import { StyleSheet, Text, ToastAndroid, useColorScheme, View } from 'react-nati
 
 import { RootStackNavigator } from '@/types/navigation';
 import watchLaterJSON from '@/types/watchLaterJSON';
-import randomTipsArray from '@assets/loadingTips.json';
 import runningTextArray from '@assets/runningText.json';
 import useGlobalStyles from '@assets/style';
 import AnimeAPI from '@utils/AnimeAPI';
@@ -42,10 +41,6 @@ function FromUrl(props: Props) {
     if (trigger) speedUpRef.current = trigger;
   }, []);
 
-  const randomTips = useRef<string>(
-    randomTipsArray[~~(Math.random() * randomTipsArray.length)],
-  ).current;
-
   const randomQuote = useRef(
     runningTextArray[~~(Math.random() * runningTextArray.length)] ?? {},
   ).current;
@@ -56,9 +51,7 @@ function FromUrl(props: Props) {
         props.navigation.goBack();
         return;
       }
-      if (err.message === 'canceled' || err.message === 'Aborted') {
-        return;
-      }
+      if (err.message === 'canceled' || err.message === 'Aborted') return;
       const errMessage =
         err.message === 'Network Error' || err.message === 'Network request failed'
           ? 'Permintaan gagal: Jaringan Error\nPastikan kamu terhubung dengan internet'
@@ -244,7 +237,10 @@ function FromUrl(props: Props) {
             </Text>
             <Text style={styles.hashDifficulty}>Tingkat Kesulitan: {hashProgress.difficulty}</Text>
 
-            <View style={[styles.hashTimerBox, { borderColor: hashProgress.isCompleted ? '#4CAF50' : 'transparent', backgroundColor: hashProgress.isCompleted ? 'rgba(76,175,80,0.1)' : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+            <View style={[styles.hashTimerBox, {
+              borderColor: hashProgress.isCompleted ? '#4CAF50' : 'transparent',
+              backgroundColor: hashProgress.isCompleted ? 'rgba(76,175,80,0.1)' : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            }]}>
               <Text style={[styles.hashTimer, { color: hashProgress.isCompleted ? '#4CAF50' : globalStyles.text.color }]}>
                 {hashProgress.elapsed} detik
               </Text>
@@ -252,11 +248,11 @@ function FromUrl(props: Props) {
 
             {hashProgress.canSpeedUp && !hashProgress.isSpeedingUp && !hashProgress.isCompleted && (
               <Button onPress={() => speedUpRef.current?.()} style={styles.speedUpButton} mode="contained-tonal">
-                🚀 Percepat Proses
+                Percepat Proses
               </Button>
             )}
             {hashProgress.isSpeedingUp && !hashProgress.isCompleted && (
-              <Text style={styles.speedingText}>⚡ Mempercepat dengan multi-core...</Text>
+              <Text style={styles.speedingText}>Mempercepat dengan multi-core...</Text>
             )}
             {!hashProgress.isCompleted ? (
               <>
@@ -270,19 +266,10 @@ function FromUrl(props: Props) {
         ) : (
           <View style={styles.quoteContainer}>
             <Text style={styles.loadingText}>Mengambil data...</Text>
-            <View style={styles.quoteCard}>
-              <Text style={styles.quoteSymbol}>"</Text>
-              <Text style={styles.quoteText}>{randomQuote.quote}</Text>
-              <Text style={styles.quoteAuthor}>— {randomQuote.by}</Text>
-            </View>
+            <Text style={styles.quoteText} numberOfLines={2}>"{randomQuote.quote}"</Text>
+            <Text style={styles.quoteAuthor}>— {randomQuote.by}</Text>
           </View>
         )}
-      </View>
-
-      {/* Tips */}
-      <View style={styles.tipsContainer}>
-        <Text style={styles.tipsLabel}>💡 Tips</Text>
-        <Text style={styles.tipsText}>{randomTips}</Text>
       </View>
     </View>
   );
@@ -297,71 +284,35 @@ function useStyles() {
     container: {
       flex: 1,
       backgroundColor: isDark ? '#0f0f0f' : '#f5f5f5',
-      justifyContent: 'space-between',
     },
     content: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 24,
-      gap: 24,
+      paddingHorizontal: 28,
+      gap: 20,
     },
     quoteContainer: {
       width: '100%',
       alignItems: 'center',
-      gap: 16,
+      gap: 8,
     },
     loadingText: {
-      fontSize: 16,
-      fontWeight: 'bold',
+      fontSize: 15,
+      fontWeight: '600',
       color: isDark ? '#ccc' : '#555',
-    },
-    quoteCard: {
-      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-      borderRadius: 16,
-      padding: 20,
-      width: '100%',
-      elevation: 2,
-      borderLeftWidth: 3,
-      borderLeftColor: theme.colors.primary,
-    },
-    quoteSymbol: {
-      fontSize: 32,
-      color: theme.colors.primary,
-      lineHeight: 32,
-      opacity: 0.6,
       marginBottom: 4,
     },
     quoteText: {
-      fontSize: 14,
+      fontSize: 12,
       fontStyle: 'italic',
-      color: isDark ? '#e0e0e0' : '#444',
-      lineHeight: 22,
-      marginBottom: 10,
+      color: isDark ? '#444' : '#bbb',
+      textAlign: 'center',
+      lineHeight: 18,
     },
     quoteAuthor: {
-      fontSize: 13,
-      fontWeight: 'bold',
-      color: theme.colors.primary,
-      textAlign: 'right',
-    },
-    tipsContainer: {
-      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-      padding: 16,
-      margin: 16,
-      borderRadius: 12,
-      elevation: 1,
-      gap: 4,
-    },
-    tipsLabel: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      color: theme.colors.primary,
-    },
-    tipsText: {
-      fontSize: 13,
-      color: isDark ? '#ccc' : '#555',
-      lineHeight: 18,
+      fontSize: 11,
+      color: isDark ? '#333' : '#ccc',
       textAlign: 'center',
     },
     hashContainer: {
