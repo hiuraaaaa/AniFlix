@@ -9,6 +9,7 @@ import {
   NativeStackNavigationOptions,
 } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Appearance, Linking, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SystemBars } from 'react-native-edge-to-edge';
@@ -220,6 +221,7 @@ const screens: Screens = [
 ];
 
 function App() {
+  const [fontsLoaded] = useFonts({ Cinzel_700Bold });
   const [isOpen, setIsOpen] = useState(false);
   const [cfUrl, setCfUrl] = useState('');
 
