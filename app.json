@@ -28,16 +28,8 @@
           { "scheme": "file" },
           { "scheme": "content" },
           { "mimeType": "application/x-cbz" },
-          { "mimeType": "application/vnd.comicbook+zip" }
-        ]
-      },
-      {
-        "action": "VIEW",
-        "category": ["DEFAULT"],
-        "data": [
+          { "mimeType": "application/vnd.comicbook+zip" },
           { "host": "*" },
-          { "scheme": "file" },
-          { "scheme": "content" },
           { "pathPattern": ".*\\\\.cbz" },
           { "pathPattern": ".*\\\\..*\\\\.cbz" }
         ]
