@@ -31,4 +31,5 @@ jobs:
       - name: Publish OTA Update
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
-        run: eas update --channel production --message "OTA: $COMMIT_MSG" --non-interactive
+        run: |
+          eas update --channel production --message "OTA: $COMMIT_MSG" --non-interactive
