@@ -23,7 +23,7 @@ import React, {
 import {
   Animated,
   Dimensions,
-  Image, 
+  Image,
   ScrollView as RNScrollView,
   ScrollViewProps,
   StyleSheet,
@@ -67,7 +67,6 @@ type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
 const Home = memo(HomeList);
 export default Home;
 
-// Banner Carousel dengan blur + smooth transition
 function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: HomeProps['navigation'] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<RNScrollView>(null);
@@ -80,7 +79,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
   const goToIndex = useCallback((next: number) => {
     if (isScrolling.current) return;
     isScrolling.current = true;
-
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 200,
@@ -88,7 +86,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
     }).start(() => {
       setActiveIndex(next);
       scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
-
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 350,
@@ -158,7 +155,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
           ))}
         </RNScrollView>
 
-        {/* Overlay info dengan fade animation */}
         <Animated.View style={{
           position: 'absolute',
           bottom: 0,
@@ -170,7 +166,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
           gap: 10,
           opacity: fadeAnim,
         }}>
-          {/* Poster kecil */}
           <ImageLoading
             source={{ uri: currentItem?.thumbnailUrl }}
             style={{
@@ -182,8 +177,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
             }}
             resizeMode="cover"
           />
-
-          {/* Info */}
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
@@ -224,7 +217,6 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
         </Animated.View>
       </View>
 
-      {/* Dots */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 }}>
         {items.map((_, i) => (
           <View key={i} style={{
@@ -249,9 +241,6 @@ function HomeList(props: HomeProps) {
   const { paramsState: data, setParamsState: setData } = useContext(EpisodeBaruHomeContext);
   const [refresh, setRefresh] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
-
-  // Hapus useFonts di sini — sudah di-load di App.tsx
-  // Font Cinzel_700Bold sudah pasti tersedia saat screen ini render
 
   const refreshing = useCallback(() => {
     setRefresh(true);
@@ -322,20 +311,19 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
-          {/* Header - langsung pakai Cinzel tanpa cek fontsLoaded */}
+          {/* Header */}
           <View style={styles.header}>
-           <Image
-            source={require('@assets/lunar-logo.png')}
-            style={{ height: 42, width: 210 }}
-            resizeMode="contain"
+            <Image
+              source={require('@assets/lunar-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
-           </View>
-          {/* Banner Carousel */}
+          </View>
+
           {filmHomepageData.featured.length > 0 && (
             <BannerCarousel data={filmHomepageData.featured} navigation={props.navigation} />
           )}
 
-          {/* Episode Terbaru */}
           <EpisodeBaru
             isRefreshing={refresh}
             styles={styles}
@@ -344,7 +332,6 @@ function HomeList(props: HomeProps) {
             props={props}
           />
 
-          {/* Film Unggulan */}
           <FeaturedFilmList
             data={filmHomepageData.featured}
             isError={isFilmError}
@@ -379,7 +366,6 @@ function HomeList(props: HomeProps) {
   );
 }
 
-// Episode Terbaru
 const EpisodeBaru = memo(
   EpisodeBaruUNMEMO,
   (prev, next) =>
@@ -398,10 +384,6 @@ function EpisodeBaruUNMEMO({
   styles: ReturnType<typeof useStyles>;
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
-  const dimensions = useWindowDimensions();
-  const LIST_W = dimensions.width * 0.32;
-  const LIST_H = LIST_W * 1.45;
-
   const renderNewAnime = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
@@ -642,7 +624,7 @@ function ComicListUNMEMO() {
   );
 }
 
-function ShowSkeletonLoading({ grid }: { grid?: boolean }) {
+function ShowSkeletonLoading() {
   const dimensions = useWindowDimensions();
   const LIST_W = dimensions.width * 0.32;
   const LIST_H = LIST_W * 1.45;
@@ -696,7 +678,12 @@ function useStyles() {
           paddingHorizontal: 16,
           paddingTop: 12,
           paddingBottom: 8,
-          alignItems: 'flex-start',
+        },
+        logo: {
+          height: 42,
+          width: undefined,
+          aspectRatio: 5,
+          alignSelf: 'flex-start',
         },
         headerTitle: {
           fontSize: 32,
