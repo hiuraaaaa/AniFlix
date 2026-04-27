@@ -8,6 +8,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { lazy, memo, useCallback, useContext, useEffect } from 'react';
 import { AndroidSoftInputModes, KeyboardController } from 'react-native-keyboard-controller';
 import { BottomNavigation, useTheme } from 'react-native-paper';
+import { StyleSheet, useColorScheme } from 'react-native';
 
 import { HomeNavigator, RootStackNavigator } from '@/types/navigation';
 import { EpisodeBaruHomeContext } from '@misc/context';
@@ -43,41 +44,44 @@ const tabScreens: {
     component: withSuspenseAndSafeArea(EpisodeBaruHome, false),
     options: {
       tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
-      tabBarLabel: 'Beranda',
+      tabBarLabel: 'Home',
     },
   },
   {
     name: 'Search',
     component: withSuspenseAndSafeArea(Search, true, false, true),
     options: {
-      tabBarIcon: ({ color, size }) => <MaterialIcons name="search" size={size} color={color} />,
-      tabBarLabel: 'Pencarian',
+      tabBarIcon: ({ color, size }) => <MaterialIcons name="explore" size={size} color={color} />,
+      tabBarLabel: 'Explore',
     },
   },
   {
     name: 'Saya',
     component: withSuspenseAndSafeArea(Saya, false),
     options: {
-      tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
-      tabBarLabel: 'Saya',
+      tabBarIcon: ({ color, size }) => <MaterialIcons name="video-library" size={size} color={color} />,
+      tabBarLabel: 'Library',
     },
   },
   {
     name: 'Utilitas',
     component: withSuspenseAndSafeArea(Utils, false),
     options: {
-      tabBarIcon: ({ color, size }) => <MaterialIcons name="build" size={size} color={color} />,
+      tabBarIcon: ({ color, size }) => <MaterialIcons name="menu" size={size} color={color} />,
+      tabBarLabel: 'More',
     },
   },
 ];
 
 function BottomTabs(props: Props) {
   const { setParamsState: setAnimeData } = useContext(EpisodeBaruHomeContext);
-  // const colorScheme = useColorScheme();
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
+
   useEffect(() => {
     setAnimeData?.(props.route.params.data);
   }, [props.route.params.data, setAnimeData]);
+
   useFocusEffect(
     useCallback(() => {
       KeyboardController.setInputMode(AndroidSoftInputModes.SOFT_INPUT_ADJUST_PAN);
@@ -86,14 +90,9 @@ function BottomTabs(props: Props) {
       };
     }, []),
   );
+
   return (
     <Tab.Navigator
-      // tabBarStyle={{
-      //   backgroundColor: colorScheme === 'dark' ? '#181818' : '#f0f0f0',
-      // }}
-      // activeIndicatorColor={colorScheme === 'dark' ? '#525252' : '#d8d8d8'}
-      // getFreezeOnBlur={() => true}
-      // TODO: Remove this when the blank screen issue is fixed
       detachInactiveScreens={false}
       screenOptions={{
         animation: 'shift',
@@ -104,6 +103,18 @@ function BottomTabs(props: Props) {
         <BottomNavigation.Bar
           navigationState={state}
           safeAreaInsets={insets}
+          activeColor={theme.colors.primary}
+          inactiveColor={isDark ? '#666' : '#999'}
+          style={{
+            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            elevation: 12,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? '#2a2a2a' : '#e0e0e0',
+          }}
+          activeIndicatorStyle={{
+            backgroundColor: isDark ? '#2D1F4E' : '#EDE7F6',
+            borderRadius: 16,
+          }}
           onTabPress={({ route, preventDefault }) => {
             const event = navigation.emit({
               type: 'tabPress',
@@ -135,7 +146,6 @@ function BottomTabs(props: Props) {
                 : typeof options.title === 'string'
                   ? options.title
                   : route.name;
-
             return label;
           }}
         />
