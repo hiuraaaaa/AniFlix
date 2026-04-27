@@ -7,6 +7,7 @@ import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
+  TextInput,
   ToastAndroid,
   TouchableOpacity,
   useColorScheme,
@@ -14,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Button, Chip, Divider, Searchbar, useTheme } from 'react-native-paper';
+import { Button, Chip, Divider, useTheme } from 'react-native-paper';
 import Reanimated, {
   interpolate,
   useAnimatedRef,
@@ -226,7 +227,6 @@ const ComicsDetailHeader = memo(
     link,
   }: ComicsDetailHeaderProps) => {
     const styles = useStyles();
-    const globalStyles = useGlobalStyles();
     const theme = useTheme();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -417,13 +417,24 @@ const ComicsDetailHeader = memo(
             <Text style={styles.sectionTitle}>Daftar Chapter</Text>
             <Text style={styles.chapterCount}>{data.chapters.length} Chapter</Text>
           </View>
-          <Searchbar
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchbar}
-            placeholder="Cari chapter"
-            keyboardType="number-pad"
-          />
+
+          {/* Custom Search Bar */}
+          <View style={styles.searchContainer}>
+            <Icon name="search" size={13} color="#888" />
+            <TextInput
+              keyboardType="number-pad"
+              placeholder="Cari chapter..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Icon name="times-circle" size={13} color="#888" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -632,9 +643,23 @@ function useStyles() {
           fontSize: 13,
           color: isDark ? '#888' : '#999',
         },
-        searchbar: {
+        searchContainer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: isDark ? '#1e1e1e' : '#e0e0e0',
           borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
           marginBottom: 4,
+          gap: 8,
+          borderWidth: 1,
+          borderColor: isDark ? '#2e2e2e' : '#ccc',
+        },
+        searchInput: {
+          flex: 1,
+          fontSize: 13,
+          color: isDark ? '#e0e0e0' : '#333',
+          padding: 0,
         },
         chapterItem: {
           flexDirection: 'row',
