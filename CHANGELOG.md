@@ -1,4 +1,4 @@
-# v1.2.1_JS-8 (26 April 2026)
+# v1.2.1_JS-8 (27 April 2026)
 [Fix] Perbaikan data film (migrasi ke sistem API baru)
 
 # v1.2.1_JS-7 (24 April 2026)
