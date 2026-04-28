@@ -42,6 +42,7 @@ import { CFBypassIsOpenContext, setWebViewOpen } from '@utils/CFBypass';
 import SetupComics1 from '@utils/comics1SessionFetcher/SetupComics1.tsx';
 import { DatabaseManager } from '@utils/DatabaseManager';
 import DialogManager from '@utils/dialogManager';
+import { checkForUpdate } from '@utils/updateChecker';
 
 cleanCbzDir();
 
@@ -250,6 +251,9 @@ function App() {
     SystemNavigationBar.fullScreen(false);
     SystemNavigationBar.navigationShow();
     SplashScreen.hideAsync();
+
+    // Cek update setelah app siap
+    checkForUpdate();
   }, [fontsLoaded]);
 
   useEffect(() => {
