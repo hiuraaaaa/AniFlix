@@ -1,6 +1,7 @@
 {
   "name": "Lunar",
   "slug": "lunar",
+  "version": "1.2.2", 
   "displayName": "Lunar",
   "icon": "./assets/icon.png",
   "extra": {
