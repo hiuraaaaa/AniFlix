@@ -1,6 +1,5 @@
 import Constants from 'expo-constants';
-import { Linking } from 'react-native';
-import DialogManager from '@utils/dialogManager';
+import { navigationRef } from '@misc/NavigationService';
 
 const CURRENT_VERSION = Constants.expoConfig?.version ?? '1.2.1';
 const GITHUB_REPO = 'hiuraaaaa/AniFlix';
@@ -37,17 +36,17 @@ export async function checkForUpdate(): Promise<void> {
     if (!latestVersion || !isNewerVersion(latestVersion, CURRENT_VERSION)) return;
 
     // Ambil update notes dari UPDATE_NOTES.md
-    let updateNotes = '';
+    let changelog = '';
     try {
       const notesRes = await fetch(UPDATE_NOTES_URL);
       if (notesRes.ok) {
-        updateNotes = await notesRes.text();
+        changelog = await notesRes.text();
       }
     } catch {}
 
-    // Fallback ke release notes GitHub kalau UPDATE_NOTES.md kosong
-    if (!updateNotes) {
-      updateNotes = release.body ?? 'Tidak ada catatan update.';
+    // Fallback ke release notes GitHub
+    if (!changelog) {
+      changelog = release.body ?? 'Tidak ada catatan update.';
     }
 
     // Cari APK universal atau arm64
@@ -59,23 +58,15 @@ export async function checkForUpdate(): Promise<void> {
 
     const downloadUrl = apkAsset?.browser_download_url ?? release.html_url;
 
-    DialogManager.alert(
-      `Update Tersedia: ${latestVersion}`,
-      `Versi baru Lunar tersedia!\n\n${updateNotes.slice(0, 300)}${updateNotes.length > 300 ? '...' : ''}`,
-      [
-        {
-          text: 'Nanti',
-          onPress: () => {},
-        },
-        {
-          text: 'Download',
-          onPress: () => {
-            Linking.openURL(downloadUrl);
-          },
-        },
-      ],
-    );
+    // Navigate ke screen NeedUpdate
+    navigationRef.current?.navigate('NeedUpdate', {
+      nativeUpdate: true,
+      latestVersion,
+      changelog,
+      download: downloadUrl,
+    });
   } catch {
     // Gagal cek update, skip aja
   }
 }
+
