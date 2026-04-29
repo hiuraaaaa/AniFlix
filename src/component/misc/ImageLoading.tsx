@@ -67,7 +67,6 @@ const ImageLoading = (
           baseSourceObj.uri = `${withoutDomain.protocol}//${BASE.domain}${withoutDomain.pathname}`;
         } else {
           try {
-            // fix invalid url crash
             baseSourceObj.uri = generateUrlWithLatestDomain(baseSourceObj.uri);
           } catch {}
         }
@@ -106,7 +105,11 @@ const ImageLoading = (
       {isFocused && (
         <View style={styles.overlay}>
           {loading && displayLoading && <LoadingIndicator size={15} />}
-          {error && displayLoading && <Icon name="exclamation-circle" color="red" size={18} />}
+          {error && displayLoading && (
+            <View style={styles.errorOverlay}>
+              <Icon name="image" color="rgba(255,255,255,0.25)" size={22} />
+            </View>
+          )}
         </View>
       )}
     </Reanimated.View>
@@ -116,6 +119,7 @@ const ImageLoading = (
 const styles = StyleSheet.create({
   imageBackground: {
     overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
   overlay: {
     flex: 1,
@@ -126,6 +130,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  errorOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
