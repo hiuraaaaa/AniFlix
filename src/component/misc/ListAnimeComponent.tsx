@@ -145,7 +145,7 @@ function useStyles() {
         gridCard: {
           width: GRID_W,
           height: GRID_H,
-          borderRadius: 12,
+          borderRadius: 6,
           overflow: 'hidden',
           elevation: 6,
           shadowColor: '#000',
@@ -165,7 +165,7 @@ function useStyles() {
           lineHeight: 15,
         },
         listCard: {
-          borderRadius: 12,
+          borderRadius: 6,
           overflow: 'hidden',
           elevation: 6,
           shadowColor: '#000',
