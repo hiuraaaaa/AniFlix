@@ -79,4 +79,3 @@ export async function checkForUpdate(): Promise<void> {
     // Gagal cek update, skip aja
   }
 }
-
