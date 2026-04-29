@@ -681,8 +681,8 @@ function useStyles() {
         },
         logo: {
           height: 42,
-          width: undefined,
-          aspectRatio: 5,
+          width: 160, 
+          //aspectRatio: 5,
           alignSelf: 'flex-start',
         },
         headerTitle: {
