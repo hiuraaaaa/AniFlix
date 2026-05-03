@@ -8,7 +8,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { lazy, memo, useCallback, useContext, useEffect } from 'react';
 import { AndroidSoftInputModes, KeyboardController } from 'react-native-keyboard-controller';
 import { BottomNavigation, useTheme } from 'react-native-paper';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
 
 import { HomeNavigator, RootStackNavigator } from '@/types/navigation';
 import { EpisodeBaruHomeContext } from '@misc/context';
@@ -100,60 +100,55 @@ function BottomTabs(props: Props) {
         tabBarActiveTintColor: theme.colors.primary,
       }}
       tabBar={({ navigation, state, descriptors, insets }) => (
-        <View style={styles.floatingContainer}>
-          <View
-            style={[
-              styles.floatingBar,
-              {
-                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-              },
-            ]}>
-            <BottomNavigation.Bar
-              navigationState={state}
-              safeAreaInsets={{ ...insets, bottom: 0 }}
-              activeColor={theme.colors.primary}
-              inactiveColor={isDark ? '#666' : '#999'}
-              style={styles.barStyle}
-              activeIndicatorStyle={{
-                backgroundColor: isDark ? '#2D1F4E' : '#EDE7F6',
-                borderRadius: 16,
-              }}
-              onTabPress={({ route, preventDefault }) => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
+        <BottomNavigation.Bar
+          navigationState={state}
+          safeAreaInsets={insets}
+          activeColor={theme.colors.primary}
+          inactiveColor={isDark ? '#666' : '#999'}
+          style={{
+            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            elevation: 12,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? '#2a2a2a' : '#e0e0e0',
+          }}
+          activeIndicatorStyle={{
+            backgroundColor: isDark ? '#2D1F4E' : '#EDE7F6',
+            borderRadius: 16,
+          }}
+          onTabPress={({ route, preventDefault }) => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-                if (event.defaultPrevented) {
-                  preventDefault();
-                } else {
-                  navigation.dispatch({
-                    ...CommonActions.navigate(route.name, route.params),
-                    target: state.key,
-                  });
-                }
-              }}
-              renderIcon={({ route, focused, color }) =>
-                descriptors[route.key].options.tabBarIcon?.({
-                  focused,
-                  color,
-                  size: 24,
-                }) || null
-              }
-              getLabelText={({ route }) => {
-                const { options } = descriptors[route.key];
-                const label =
-                  typeof options.tabBarLabel === 'string'
-                    ? options.tabBarLabel
-                    : typeof options.title === 'string'
-                      ? options.title
-                      : route.name;
-                return label;
-              }}
-            />
-          </View>
-        </View>
+            if (event.defaultPrevented) {
+              preventDefault();
+            } else {
+              navigation.dispatch({
+                ...CommonActions.navigate(route.name, route.params),
+                target: state.key,
+              });
+            }
+          }}
+          renderIcon={({ route, focused, color }) =>
+            descriptors[route.key].options.tabBarIcon?.({
+              focused,
+              color,
+              size: 24,
+            }) || null
+          }
+          getLabelText={({ route }) => {
+            const { options } = descriptors[route.key];
+            const label =
+              typeof options.tabBarLabel === 'string'
+                ? options.tabBarLabel
+                : typeof options.title === 'string'
+                  ? options.title
+                  : route.name;
+            return label;
+          }}
+        />
       )}>
       {tabScreens.map(({ name, component: Component, options }) => (
         <Tab.Screen key={name} name={name} options={options}>
@@ -163,29 +158,5 @@ function BottomTabs(props: Props) {
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  floatingContainer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    alignItems: 'center',
-  },
-  floatingBar: {
-    width: '100%',
-    borderRadius: 32,
-    overflow: 'hidden',
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  barStyle: {
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
-  },
-});
 
 export default memo(BottomTabs);
