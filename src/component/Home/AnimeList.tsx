@@ -9,7 +9,6 @@ import {
 } from '@react-navigation/native';
 import { FlashList, ListRenderItemInfo, useMappingHelper } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 import React, {
   memo,
   use,
@@ -61,16 +60,44 @@ export const MIN_IMAGE_HEIGHT = 160;
 export const MIN_IMAGE_WIDTH = 90;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_HEIGHT = 300;
 
 type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
 
 const Home = memo(HomeList);
 export default Home;
 
+function SectionHeader({
+  title,
+  subtitle,
+  onSeeMore,
+  styles,
+}: {
+  title: string;
+  subtitle: string;
+  onSeeMore?: () => void;
+  styles: ReturnType<typeof useStyles>;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+      </View>
+      {onSeeMore && (
+        <TouchableOpacity style={styles.seeMoreButton} onPress={onSeeMore}>
+          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: HomeProps['navigation'] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<RNScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const items = data.slice(0, 8);
@@ -79,22 +106,20 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
   const goToIndex = useCallback((next: number) => {
     if (isScrolling.current) return;
     isScrolling.current = true;
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1.04, duration: 250, useNativeDriver: true }),
+    ]).start(() => {
       setActiveIndex(next);
-      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }).start(() => {
+      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: false });
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]).start(() => {
         isScrolling.current = false;
       });
     });
-  }, [fadeAnim]);
+  }, [fadeAnim, scaleAnim]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -110,126 +135,200 @@ function BannerCarousel({ data, navigation }: { data: FilmHomePage; navigation: 
   const currentItem = items[activeIndex];
 
   return (
-    <View style={{ marginBottom: 16 }}>
-      <View style={{ position: 'relative' }}>
-        <RNScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={e => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            if (idx !== activeIndex) {
-              Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 150,
-                useNativeDriver: true,
-              }).start(() => {
-                setActiveIndex(idx);
-                Animated.timing(fadeAnim, {
-                  toValue: 1,
-                  duration: 350,
-                  useNativeDriver: true,
-                }).start();
-              });
-            }
-          }}
-          scrollEventThrottle={16}>
-          {items.map((item, i) => (
-            <TouchableOpacity
-              key={i}
-              style={{ width: SCREEN_WIDTH, height: 240 }}
-              onPress={() => {
-                navigation.dispatch(StackActions.push('FromUrl', { title: item.title, link: item.url, type: 'film' }));
-              }}>
-              <ImageLoading
-                source={{ uri: item.thumbnailUrl }}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover">
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.97)']}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 180 }}
-                />
-              </ImageLoading>
-            </TouchableOpacity>
-          ))}
-        </RNScrollView>
-
-        <Animated.View style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: 12,
-          flexDirection: 'row',
-          alignItems: 'flex-end',
-          gap: 10,
-          opacity: fadeAnim,
-        }}>
-          <ImageLoading
-            source={{ uri: currentItem?.thumbnailUrl }}
+    <View style={bannerStyles.wrapper}>
+      <RNScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEnabled={false}
+        style={StyleSheet.absoluteFill}>
+        {items.map((item, i) => (
+          <Animated.View
+            key={i}
             style={{
-              width: 70,
-              height: 100,
-              borderRadius: 8,
-              borderWidth: 2,
-              borderColor: 'rgba(255,255,255,0.25)',
-            }}
-            resizeMode="cover"
-          />
-          <View style={{ flex: 1, gap: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>UNGGULAN</Text>
-              </View>
-              {'rating' in currentItem && currentItem.rating && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                  <MaterialIcon name="star" size={12} color="#FFD700" />
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{currentItem.rating}</Text>
-                </View>
-              )}
-            </View>
-            <Text numberOfLines={2} style={{ color: '#fff', fontSize: 15, fontWeight: 'bold', lineHeight: 20 }}>
-              {currentItem?.title}
-            </Text>
-            {'synopsis' in currentItem && currentItem.synopsis ? (
-              <Text numberOfLines={2} style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, lineHeight: 16 }}>
-                {currentItem.synopsis}
-              </Text>
-            ) : null}
-            <TouchableOpacity
-              onPress={() => navigation.dispatch(StackActions.push('FromUrl', { title: currentItem?.title, link: currentItem?.url, type: 'film' }))}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                backgroundColor: theme.colors.primary,
-                alignSelf: 'flex-start',
-                paddingHorizontal: 12,
-                paddingVertical: 5,
-                borderRadius: 20,
-                marginTop: 2,
-              }}>
-              <MaterialIcon name="play-arrow" size={14} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Tonton</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </View>
+              width: SCREEN_WIDTH,
+              height: BANNER_HEIGHT,
+              transform: [{ scale: i === activeIndex ? scaleAnim : new Animated.Value(1) }],
+            }}>
+            <ImageLoading
+              source={{ uri: item.thumbnailUrl }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
+          </Animated.View>
+        ))}
+      </RNScrollView>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 }}>
+      <LinearGradient
+        colors={['rgba(0,0,0,0.3)', 'transparent']}
+        style={bannerStyles.topGradient}
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.98)']}
+        style={bannerStyles.bottomGradient}
+      />
+
+      <Animated.View style={[bannerStyles.contentOverlay, { opacity: fadeAnim }]}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.dispatch(StackActions.push('FromUrl', {
+            title: currentItem?.title,
+            link: currentItem?.url,
+            type: 'film',
+          }))}
+          style={bannerStyles.contentTouchable}>
+          <View style={bannerStyles.badgeRow}>
+            <View style={[bannerStyles.badge, { backgroundColor: theme.colors.primary }]}>
+              <Text style={bannerStyles.badgeText}>UNGGULAN</Text>
+            </View>
+            {'rating' in currentItem && currentItem.rating && (
+              <View style={bannerStyles.ratingRow}>
+                <MaterialIcon name="star" size={13} color="#FFD700" />
+                <Text style={bannerStyles.ratingText}>{currentItem.rating}</Text>
+              </View>
+            )}
+          </View>
+          <Text numberOfLines={2} style={bannerStyles.title}>
+            {currentItem?.title}
+          </Text>
+          {'synopsis' in currentItem && currentItem.synopsis ? (
+            <Text numberOfLines={2} style={bannerStyles.synopsis}>
+              {currentItem.synopsis}
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            onPress={() => navigation.dispatch(StackActions.push('FromUrl', {
+              title: currentItem?.title,
+              link: currentItem?.url,
+              type: 'film',
+            }))}
+            style={[bannerStyles.watchButton, { backgroundColor: theme.colors.primary }]}>
+            <MaterialIcon name="play-arrow" size={18} color="#fff" />
+            <Text style={bannerStyles.watchButtonText}>Tonton</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <View style={bannerStyles.dotsRow}>
         {items.map((_, i) => (
-          <View key={i} style={{
-            width: i === activeIndex ? 16 : 6,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: i === activeIndex ? theme.colors.primary : isDark ? '#444' : '#ccc',
-          }} />
+          <TouchableOpacity key={i} onPress={() => goToIndex(i)}>
+            <View style={[
+              bannerStyles.dot,
+              {
+                width: i === activeIndex ? 20 : 6,
+                backgroundColor: i === activeIndex ? theme.colors.primary : isDark ? '#555' : '#aaa',
+              },
+            ]} />
+          </TouchableOpacity>
         ))}
       </View>
     </View>
   );
 }
+
+const bannerStyles = StyleSheet.create({
+  wrapper: {
+    width: SCREEN_WIDTH,
+    height: BANNER_HEIGHT,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    zIndex: 1,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    zIndex: 1,
+  },
+  contentOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+    paddingHorizontal: 16,
+    paddingBottom: 36,
+  },
+  contentTouchable: { gap: 6 },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  ratingText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+    lineHeight: 28,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  synopsis: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  watchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    marginTop: 4,
+    elevation: 4,
+  },
+  watchButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  dotsRow: {
+    position: 'absolute',
+    bottom: 12,
+    right: 16,
+    flexDirection: 'row',
+    gap: 4,
+    zIndex: 3,
+  },
+  dot: {
+    height: 4,
+    borderRadius: 2,
+  },
+});
 
 function HomeList(props: HomeProps) {
   const globalStyles = useGlobalStyles();
@@ -311,7 +410,6 @@ function HomeList(props: HomeProps) {
       ListHeaderComponent={
         <>
           <Announcment />
-          {/* Header */}
           <View style={styles.header}>
             <Image
               source={require('@assets/lunar-logo.png')}
@@ -352,8 +450,11 @@ function HomeList(props: HomeProps) {
 
           <TouchableOpacity
             onPress={toggleJadwal}
-            style={[styles.scheduleSection, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-            <Text style={styles.sectionTitle}>JADWAL ANIME</Text>
+            style={[styles.scheduleSection, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+            <View>
+              <Text style={styles.sectionTitle}>JADWAL ANIME</Text>
+              <Text style={styles.sectionSubtitle}>Jadwal tayang mingguan</Text>
+            </View>
             <MaterialIcons name={jadwalHidden ? 'arrow-downward' : 'arrow-upward'} size={18} color={styles.sectionTitle.color} />
           </TouchableOpacity>
         </>
@@ -398,14 +499,12 @@ function EpisodeBaruUNMEMO({
 
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>EPISODE TERBARU</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }))}>
-          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader
+        title="EPISODE TERBARU"
+        subtitle="Anime terbaru hari ini"
+        onSeeMore={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }))}
+        styles={styles}
+      />
       {(data?.newAnime.length || 0) > 0 ? (
         <FlashList
           renderScrollComponent={RenderScrollComponent}
@@ -440,9 +539,7 @@ function FeaturedFilmListUNMEMO({ props, data, isError }: { props: HomeProps; da
   );
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>FILM UNGGULAN</Text>
-      </View>
+      <SectionHeader title="FILM UNGGULAN" subtitle="Film pilihan terbaik" styles={styles} />
       {isError ? (
         <Text style={styles.errorText}>Gagal mendapatkan data</Text>
       ) : data?.length !== 0 ? (
@@ -465,9 +562,7 @@ function TrendingFilmListUNMEMO({ props, data, isError }: { props: HomeProps; da
   );
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>FILM TRENDING</Text>
-      </View>
+      <SectionHeader title="FILM TRENDING" subtitle="Sedang populer sekarang" styles={styles} />
       {isError ? (
         <Text style={styles.errorText}>Gagal mendapatkan data</Text>
       ) : data?.length !== 0 ? (
@@ -501,12 +596,12 @@ function LatestFilmListUNMEMO({ props }: { props: HomeProps }) {
   }, [setData]);
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>FILM TERBARU</Text>
-        <TouchableOpacity style={styles.seeMoreButton} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'FilmList' }))}>
-          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader
+        title="FILM TERBARU"
+        subtitle="Update film terkini"
+        onSeeMore={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'FilmList' }))}
+        styles={styles}
+      />
       {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
       : data?.length !== 0 ? (
         <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 36) ?? []} renderItem={renderMovie} keyExtractor={z => 'latest' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
@@ -534,12 +629,12 @@ function LatestSeriesListUNMEMO({ props }: { props: HomeProps }) {
   }, [setData]);
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>SERIES TERBARU</Text>
-        <TouchableOpacity style={styles.seeMoreButton} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'SeriesList' }))}>
-          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader
+        title="SERIES TERBARU"
+        subtitle="Series episode terkini"
+        onSeeMore={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'SeriesList' }))}
+        styles={styles}
+      />
       {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
       : data?.length !== 0 ? (
         <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data?.slice(0, 36) ?? []} renderItem={renderMovie} keyExtractor={z => 'series' + z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
@@ -571,12 +666,12 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   }, [setData]);
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>MOVIE TERBARU</Text>
-        <TouchableOpacity style={styles.seeMoreButton} disabled={data?.length === 0} onPress={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'MovieList' }))}>
-          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader
+        title="MOVIE TERBARU"
+        subtitle="Anime movie pilihan"
+        onSeeMore={() => props.navigation.dispatch(StackActions.push('SeeMore', { type: 'MovieList' }))}
+        styles={styles}
+      />
       {isError ? (
         <TouchableOpacity onPress={() => navigation.reset({ index: 0, routes: [{ name: 'connectToServer' }] })} style={styles.errorContainer}>
           <MaterialIcon name="refresh" size={20} color="#d80000" />
@@ -610,12 +705,12 @@ function ComicListUNMEMO() {
   );
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>KOMIK TERBARU</Text>
-        <TouchableOpacity style={styles.seeMoreButton} disabled={data?.length === 0} onPress={() => navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }))}>
-          <Text style={styles.seeMoreText}>LIHAT SEMUA</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader
+        title="KOMIK TERBARU"
+        subtitle="Update komik terkini"
+        onSeeMore={() => navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }))}
+        styles={styles}
+      />
       {isError ? <Text style={styles.errorText}>Gagal mendapatkan data</Text>
       : data && data?.length !== 0 ? (
         <FlashList renderScrollComponent={RenderScrollComponent} contentContainerStyle={{ gap: 4, paddingHorizontal: 4 }} horizontal data={data.slice(0, 24)} renderItem={renderComics} keyExtractor={z => z.title} extraData={styles} showsHorizontalScrollIndicator={false} />
@@ -675,21 +770,14 @@ function useStyles() {
           backgroundColor: isDark ? '#111' : '#f0f0f0',
         },
         header: {
-          paddingHorizontal: 16,
+          paddingHorizontal: 8,
           paddingTop: 12,
           paddingBottom: 8,
         },
         logo: {
           height: 42,
-          width: 160, 
-          //aspectRatio: 5,
+          width: 160,
           alignSelf: 'flex-start',
-        },
-        headerTitle: {
-          fontSize: 32,
-          fontWeight: 'bold',
-          color: isDark ? '#fff' : '#111',
-          letterSpacing: 2,
         },
         sectionContainer: {
           paddingVertical: 10,
@@ -700,20 +788,29 @@ function useStyles() {
           justifyContent: 'space-between',
           alignItems: 'center',
           paddingHorizontal: 12,
-          marginBottom: 10,
+          marginBottom: 12,
         },
         sectionTitle: {
-          fontSize: 13,
+          fontSize: 18,
           fontWeight: 'bold',
-          color: isDark ? '#E0E0E0' : '#222',
-          letterSpacing: 1,
+          color: isDark ? '#FFFFFF' : '#111',
+          letterSpacing: 0.5,
+        },
+        sectionSubtitle: {
+          fontSize: 11,
+          color: isDark ? '#666' : '#aaa',
+          marginTop: 2,
+          letterSpacing: 0.3,
         },
         seeMoreButton: {
-          flexDirection: 'row',
-          alignItems: 'center',
+          paddingHorizontal: 10,
+          paddingVertical: 4,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.primary,
         },
         seeMoreText: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 'bold',
           color: theme.colors.primary,
           letterSpacing: 0.5,
