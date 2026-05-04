@@ -44,12 +44,12 @@ const ImageLoading = (
 
   const isFocused = useIsFocused();
 
+  const activeSource = Array.isArray(source) ? source[0] : source;
   const resolvedSource = useMemo<ImageSourcePropType | undefined>(() => {
     if (!source) return source;
 
     if (typeof source === 'number') return source;
 
-    const activeSource = Array.isArray(source) ? source[0] : source;
     let baseSourceObj: any = {};
 
     if (typeof activeSource === 'string') {
@@ -67,6 +67,7 @@ const ImageLoading = (
           baseSourceObj.uri = `${withoutDomain.protocol}//${BASE.domain}${withoutDomain.pathname}`;
         } else {
           try {
+            // fix invalid url crash
             baseSourceObj.uri = generateUrlWithLatestDomain(baseSourceObj.uri);
           } catch {}
         }
@@ -86,12 +87,13 @@ const ImageLoading = (
     }
 
     return baseSourceObj as ImageSourcePropType;
-  }, [source]);
+  }, [activeSource, source]);
 
   return (
     <Reanimated.View style={[style, styles.imageBackground]}>
       {isFocused && (
         <Image
+          key={typeof activeSource === 'number' ? activeSource : activeSource?.uri}
           fadeDuration={200}
           {...restProps}
           source={resolvedSource}
