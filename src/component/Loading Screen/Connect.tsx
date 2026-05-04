@@ -248,15 +248,12 @@ function Loading(props: Props) {
         </Suspense>
       )}
 
-      {/* Main content - centered */}
       <View style={styles.main}>
-        {/* Header */}
         <Text style={styles.appName}>Lunar</Text>
         <Text style={styles.subtitle}>Anime · Film · Komik</Text>
 
         <View style={styles.spacer} />
 
-        {/* Progress bar */}
         <View style={styles.progressBar}>
           <Reanimated.View style={[styles.progressFill, progressBarStyle]} />
         </View>
@@ -264,7 +261,6 @@ function Loading(props: Props) {
 
         <View style={styles.spacerSmall} />
 
-        {/* Status list */}
         <View style={styles.statusContainer}>
           {Object.entries(loadStatus).map(([key, value]) => (
             <View style={styles.statusItem} key={key}>
@@ -279,11 +275,10 @@ function Loading(props: Props) {
         </View>
       </View>
 
-      {/* Footer - quote + version */}
       <View style={styles.footer}>
         <Text style={styles.quoteText} numberOfLines={2}>"{quotes.quote}"</Text>
         <Text style={styles.quoteAuthor}>— {quotes.by}</Text>
-        <Text style={styles.versionText}>v{appVersion} · JS_{OTAJSVersion}</Text>
+        <Text style={styles.versionText}>{appVersion} · JS_{OTAJSVersion}</Text>
       </View>
     </View>
   );
@@ -382,7 +377,7 @@ function useStyles() {
         },
         versionText: {
           fontSize: 10,
-          color: isDark ? '#2a2a2a' : '#ddd',
+          color: isDark ? '#555' : '#bbb',
           marginTop: 6,
         },
       }),
