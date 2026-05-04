@@ -10,7 +10,7 @@ import {
 } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
-import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Appearance, Linking, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SystemBars } from 'react-native-edge-to-edge';
 import ErrorBoundary from 'react-native-error-boundary';
@@ -24,7 +24,6 @@ import {
   PaperProvider,
   Portal,
 } from 'react-native-paper';
-
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SystemNavigationBar from 'react-native-system-navigation-bar';
@@ -161,7 +160,6 @@ const linking: LinkingOptions<RootStackNavigator> = {
   },
 };
 
-// Handle JavaScript Error globally
 if (!__DEV__) {
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     if (error instanceof Error && isFatal) {
@@ -177,47 +175,80 @@ type Screens = {
 }[];
 
 const screens: Screens = [
-  { name: 'CbzReader', component: withSuspenseAndSafeArea(CbzReader, true, true) },
-  { name: 'Home', component: withSuspenseAndSafeArea(Home, false), options: undefined },
-  { name: 'AnimeDetail', component: withSuspenseAndSafeArea(AniDetail, false), options: undefined },
+  {
+    name: 'CbzReader',
+    component: withSuspenseAndSafeArea(CbzReader, true, true),
+    options: { animation: 'fade_from_bottom' },
+  },
+  {
+    name: 'Home',
+    component: withSuspenseAndSafeArea(Home, false),
+    options: { animation: 'fade' },
+  },
+  {
+    name: 'AnimeDetail',
+    component: withSuspenseAndSafeArea(AniDetail, false),
+    options: { animation: 'slide_from_right' },
+  },
   {
     name: 'MovieDetail',
     component: withSuspenseAndSafeArea(MovieDetail, false),
-    options: undefined,
+    options: { animation: 'slide_from_right' },
   },
   {
     name: 'FilmDetail',
     component: withSuspenseAndSafeArea(FilmDetail, false),
-    options: undefined,
+    options: { animation: 'slide_from_right' },
   },
   {
     name: 'ComicsDetail',
     component: withSuspenseAndSafeArea(ComicsDetail, false),
-    options: undefined,
+    options: { animation: 'slide_from_right' },
   },
   {
     name: 'ComicsReading',
     component: withSuspenseAndSafeArea(ComicsReading, true, true),
-    options: undefined,
+    options: { animation: 'fade_from_bottom' },
   },
-  { name: 'FromUrl', component: withSuspenseAndSafeArea(FromUrl), options: { headerShown: true } },
-  { name: 'Video', component: withSuspenseAndSafeArea(Video, false), options: undefined },
-  { name: 'Video_Film', component: withSuspenseAndSafeArea(Video_Film, false), options: undefined },
-  { name: 'connectToServer', component: withSuspenseAndSafeArea(Connecting), options: undefined },
-  { name: 'NeedUpdate', component: withSuspenseAndSafeArea(NeedUpdate), options: undefined },
+  {
+    name: 'FromUrl',
+    component: withSuspenseAndSafeArea(FromUrl),
+    options: { headerShown: true, animation: 'slide_from_right' },
+  },
+  {
+    name: 'Video',
+    component: withSuspenseAndSafeArea(Video, false),
+    options: { animation: 'fade_from_bottom' },
+  },
+  {
+    name: 'Video_Film',
+    component: withSuspenseAndSafeArea(Video_Film, false),
+    options: { animation: 'fade_from_bottom' },
+  },
+  {
+    name: 'connectToServer',
+    component: withSuspenseAndSafeArea(Connecting),
+    options: { animation: 'fade' },
+  },
+  {
+    name: 'NeedUpdate',
+    component: withSuspenseAndSafeArea(NeedUpdate),
+    options: { animation: 'slide_from_bottom' },
+  },
   {
     name: 'FailedToConnect',
     component: withSuspenseAndSafeArea(FailedToConnect),
-    options: undefined,
+    options: { animation: 'fade' },
   },
   {
     name: 'SeeMore',
     component: withSuspenseAndSafeArea(SeeMore, false),
-    options: { headerShown: true },
+    options: { headerShown: true, animation: 'slide_from_right' },
   },
   {
     name: 'ErrorScreen',
     component: ErrorScreen,
+    options: { animation: 'fade' },
   },
 ];
 
@@ -236,7 +267,6 @@ function App() {
     };
   }, []);
 
-  // Nunggu font loaded dulu baru hide splash screen
   useEffect(() => {
     if (!fontsLoaded) return;
 
@@ -252,7 +282,6 @@ function App() {
     SystemNavigationBar.navigationShow();
     SplashScreen.hideAsync();
 
-    // Cek update setelah app siap
     checkForUpdate();
   }, [fontsLoaded]);
 
@@ -260,16 +289,67 @@ function App() {
     SystemBars.setStyle(colorScheme === 'dark' ? 'light' : 'dark');
   }, [colorScheme]);
 
-  // Dialog related
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogContent, setDialogContent] = useState({
     title: '',
     message: '',
     buttons: [] as { text: string; onPress: () => void }[],
   });
+
   useEffect(() => {
     DialogManager.setupDialog(setDialogVisible, setDialogContent);
   }, []);
+
+  const theme = useMemo(
+    () => (colorScheme === 'dark' ? CombinedDarkTheme : CombinedDefaultTheme),
+    [colorScheme],
+  );
+
+  const paperTheme = useMemo(
+    () => (colorScheme === 'dark' ? MDDark : MDLight),
+    [colorScheme],
+  );
+
+  const cfBypassValue = useMemo(
+    () => ({ isOpen, url: cfUrl, setIsOpen }),
+    [isOpen, cfUrl],
+  );
+
+  const handleDialogDismiss = useCallback(() => setDialogVisible(false), []);
+
+  const renderDialogButtons = useMemo(
+    () =>
+      dialogContent.buttons.map((button, index) => (
+        <Button
+          key={index}
+          onPress={() => {
+            button.onPress();
+            setDialogVisible(false);
+          }}>
+          {button.text}
+        </Button>
+      )),
+    [dialogContent.buttons],
+  );
+
+  const renderHeader = useCallback(
+    (props: any) => (
+      <Appbar.Header>
+        {props.back && (
+          <Appbar.BackAction onPress={() => props.navigation.goBack()} />
+        )}
+        <Appbar.Content
+          titleStyle={{ fontWeight: 'bold' }}
+          title={
+            typeof props.options.headerTitle === 'string'
+              ? props.options.headerTitle
+              : ''
+          }
+        />
+      </Appbar.Header>
+    ),
+    [],
+  );
 
   return (
     <SafeAreaProvider>
@@ -277,58 +357,34 @@ function App() {
         <ErrorBoundary FallbackComponent={FallbackComponent}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <HomeContext>
-              <PaperProvider theme={colorScheme === 'dark' ? MDDark : MDLight}>
+              <PaperProvider theme={paperTheme}>
                 <NavigationContainer
                   linking={linking}
                   ref={navigationRef}
-                  theme={colorScheme === 'dark' ? CombinedDarkTheme : CombinedDefaultTheme}>
+                  theme={theme}>
                   <Portal>
                     <Dialog
                       visible={dialogVisible}
                       dismissable={false}
                       dismissableBackButton
-                      onDismiss={() => setDialogVisible(false)}>
+                      onDismiss={handleDialogDismiss}>
                       <Dialog.Title>{dialogContent.title}</Dialog.Title>
                       <Dialog.Content>
                         <Text style={globalStyles.text}>{dialogContent.message}</Text>
                       </Dialog.Content>
-                      <Dialog.Actions>
-                        {dialogContent.buttons.map((button, index) => (
-                          <Button
-                            key={index}
-                            onPress={() => {
-                              button.onPress();
-                              setDialogVisible(false);
-                            }}>
-                            {button.text}
-                          </Button>
-                        ))}
-                      </Dialog.Actions>
+                      <Dialog.Actions>{renderDialogButtons}</Dialog.Actions>
                     </Dialog>
                   </Portal>
+
                   <Stack.Navigator
                     initialRouteName="connectToServer"
                     screenOptions={{
                       headerShown: false,
-                      header: props => (
-                        <Appbar.Header>
-                          {props.back && (
-                            <Appbar.BackAction
-                              onPress={() => {
-                                props.navigation.goBack();
-                              }}
-                            />
-                          )}
-                          <Appbar.Content
-                            titleStyle={{ fontWeight: 'bold' }}
-                            title={
-                              typeof props.options.headerTitle === 'string'
-                                ? props.options.headerTitle
-                                : ''
-                            }
-                          />
-                        </Appbar.Header>
-                      ),
+                      animationDuration: 350,
+                      gestureEnabled: true,
+                      gestureDirection: 'horizontal',
+                      fullScreenGestureEnabled: true,
+                      header: renderHeader,
                     }}>
                     {screens.map(({ name, component, options }) => (
                       <Stack.Screen key={name} name={name} options={options}>
@@ -336,8 +392,8 @@ function App() {
                       </Stack.Screen>
                     ))}
                   </Stack.Navigator>
-                  <CFBypassIsOpenContext
-                    value={useMemo(() => ({ isOpen, url: cfUrl, setIsOpen }), [isOpen, cfUrl])}>
+
+                  <CFBypassIsOpenContext value={cfBypassValue}>
                     {isOpen && (
                       <Suspense>
                         <CFBypassWebView />
